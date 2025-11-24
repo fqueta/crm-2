@@ -43,8 +43,18 @@ export class GenericApiService<T = any, CreateInput = any, UpdateInput = any> ex
    * @param id - ID do registro
    */
   async getById(id: string | number): Promise<T> {
-    const response = await this.get<ApiResponse<T>>(`${this.endpoint}/${id}`);
-    return response.data;
+    /**
+     * Fallback de normalização de resposta
+     * pt-BR: Alguns endpoints retornam o objeto diretamente (sem wrapper { data }).
+     *        Para evitar `undefined` no React Query, retornamos `response.data ?? response`.
+     * en-US: Some endpoints return the object directly (without { data } wrapper).
+     *        To avoid `undefined` in React Query, we return `response.data ?? response`.
+     */
+    const response = await this.get<any>(`${this.endpoint}/${id}`);
+    const normalized = (response && typeof response === 'object' && 'data' in response)
+      ? (response.data as T)
+      : (response as T);
+    return normalized;
   }
 
   /**

@@ -63,6 +63,9 @@ import AdminRedemptionDetails from "./pages/AdminRedemptionDetails";
 import AdminPointsExtractDetails from "./pages/AdminPointsExtractDetails";
 import AeroclubeDashboard from "./pages/AeroclubeDashboard";
 import CustomersLeads from "./pages/CustomersLeads";
+import Courses from "./pages/school/Courses";
+import CourseCreate from "./pages/school/CourseCreate";
+import CourseEdit from "./pages/school/CourseEdit";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -200,6 +203,28 @@ const App = () => {
                 <AdminProtectedRoute>
                   <AppLayout>
                     <Clients />
+                  </AppLayout>
+                </AdminProtectedRoute>
+              } />
+              {/* Escola / Cursos */}
+              <Route path="/admin/school/courses" element={
+                <AdminProtectedRoute>
+                  <AppLayout>
+                    <Courses />
+                  </AppLayout>
+                </AdminProtectedRoute>
+              } />
+              <Route path="/admin/school/courses/create" element={
+                <AdminProtectedRoute>
+                  <AppLayout>
+                    <CourseCreate />
+                  </AppLayout>
+                </AdminProtectedRoute>
+              } />
+              <Route path="/admin/school/courses/:id/edit" element={
+                <AdminProtectedRoute>
+                  <AppLayout>
+                    <CourseEdit />
                   </AppLayout>
                 </AdminProtectedRoute>
               } />

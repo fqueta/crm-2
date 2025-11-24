@@ -124,6 +124,20 @@ export const defaultMenu: MenuItemDTO[] = [
     ]
   },
   {
+    title: "Escola",
+    icon: "FileText",
+    permission: "school.view",
+    can_view: true,
+    items: [
+      {
+        title: "Cursos",
+        url: "/admin/school/courses",
+        permission: "school.courses.view",
+        can_view: true
+      }
+    ]
+  },
+  {
     title: "Orçamentos",
     url: "/admin/budgets",
     icon: "FileText",
