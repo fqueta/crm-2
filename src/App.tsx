@@ -57,10 +57,13 @@ import MyRedemptions from "./pages/loja/MyRedemptions";
 import RedemptionDetails from "./pages/loja/RedemptionDetails";
 import ClientArea from "./pages/loja/ClientArea";
 import LandingPage from "./pages/LandingPage";
-import AdminRedemptions from "./pages/AdminRedemptions";
-import AdminPointsExtracts from "./pages/AdminPointsExtracts";
-import AdminRedemptionDetails from "./pages/AdminRedemptionDetails";
-import AdminPointsExtractDetails from "./pages/AdminPointsExtractDetails";
+/**
+ * Removed Admin points pages imports
+ * pt-BR: Removidos imports das páginas de administração de pontos para evitar
+ *        requisições GET de módulos inexistentes durante o carregamento.
+ * en-US: Removed imports of admin points pages to prevent GET requests for
+ *        missing modules at app load time.
+ */
 import AeroclubeDashboard from "./pages/AeroclubeDashboard";
 import CustomersLeads from "./pages/CustomersLeads";
 import Courses from "./pages/school/Courses";
@@ -466,61 +469,13 @@ const App = () => {
                 </AdminProtectedRoute>
               } />
 
-              {/* Administração de pontos */}
-              <Route path="/admin/redemptions" element={
-                <AdminProtectedRoute>
-                  <AppLayout>
-                    <PermissionGuard 
-                      required="points.redemptions.view" 
-                      menuPath="/admin/redemptions"
-                      requireRemote={false}
-                    >
-                      <AdminRedemptions />
-                    </PermissionGuard>
-                  </AppLayout>
-                </AdminProtectedRoute>
-              } />
-              <Route path="/admin/points-extracts" element={
-                <AdminProtectedRoute>
-                  <AppLayout>
-                    <PermissionGuard 
-                      required="points.extracts.view" 
-                      menuPath="/admin/points-extracts"
-                      requireRemote={false}
-                    >
-                      <AdminPointsExtracts />
-                    </PermissionGuard>
-                  </AppLayout>
-                </AdminProtectedRoute>
-              } />
-
-              {/* Detalhes de pontos */}
-              <Route path="/admin/redemptions/:id" element={
-                <AdminProtectedRoute>
-                  <AppLayout>
-                    <PermissionGuard 
-                      required="points.redemptions.view" 
-                      menuPath="/admin/redemptions"
-                      requireRemote={false}
-                    >
-                      <AdminRedemptionDetails />
-                    </PermissionGuard>
-                  </AppLayout>
-                </AdminProtectedRoute>
-              } />
-              <Route path="/admin/points-extracts/:id" element={
-                <AdminProtectedRoute>
-                  <AppLayout>
-                    <PermissionGuard 
-                      required="points.extracts.view" 
-                      menuPath="/admin/points-extracts"
-                      requireRemote={false}
-                    >
-                      <AdminPointsExtractDetails />
-                    </PermissionGuard>
-                  </AppLayout>
-                </AdminProtectedRoute>
-              } />
+              {/**
+               * Points Admin routes removed
+               * pt-BR: Rotas de administração de pontos desativadas temporariamente para
+               *        impedir a tentativa de carregar módulos ausentes.
+               * en-US: Points admin routes temporarily disabled to prevent loading
+               *        missing modules.
+               */}
 
               {/* Ordens de Serviço */}
               <Route path="/admin/service-orders" element={
