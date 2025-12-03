@@ -1,25 +1,42 @@
+/**
+ * getTenantIdFromSubdomain
+ * pt-BR: Obtém o tenant_id a partir do subdomínio atual.
+ * en-US: Gets the tenant_id from the current subdomain.
+ */
 export function getTenantIdFromSubdomain(): string | null {
-  const host = window.location.hostname; 
+  const host = window.location.hostname;
   const parts = host.split('.');
   return parts.length > 1 ? parts[0] : null;
 }
 
+/**
+ * getTenantApiUrl
+ * pt-BR: Retorna a base da API do tenant, SEM versão. Ex.: "http://{tenant_id}.localhost:8000/api".
+ * en-US: Returns tenant API base, WITHOUT version. E.g.: "http://{tenant_id}.localhost:8000/api".
+ */
 export function getTenantApiUrl(): string {
-  // Derive tenant API URL from VITE_API_URL by removing 'api-' prefix
-  const baseUrl : string = import.meta.env.VITE_TENANT_API_URL || 'http://maisaqui1.localhost:8000/api/v1';
-  
-  // Se a URL contém placeholder {tenant_id}, substitui pelo tenant atual
-  if (baseUrl.includes('{tenant_id}')) {
-    const tenant_id = getTenantIdFromSubdomain() || 'default';
-    return baseUrl.replace('{tenant_id}', tenant_id);
-  }
-  
-  // Caso contrário, retorna a URL como está (para desenvolvimento local)
-  return baseUrl;
+  // Prefer VITE_TENANT_API_URL; fallback to VITE_API_URL; otherwise use sensible default
+  const raw =
+    (import.meta.env as any).VITE_TENANT_API_URL ||
+    (import.meta.env as any).VITE_API_URL ||
+    'http://{tenant_id}.localhost:8000/api';
+
+  const tenant_id = getTenantIdFromSubdomain() || 'default';
+  const replaced = raw.includes('{tenant_id}') ? raw.replace('{tenant_id}', tenant_id) : raw;
+
+  // Normalize: remove trailing slashes to avoid double slashes when concatenating version
+  return replaced.replace(/\/+$/, '');
 }
 
+/**
+ * getVersionApi
+ * pt-BR: Retorna a versão da API (apenas o sufixo), ex.: "/v1".
+ * en-US: Returns API version (suffix only), e.g.: "/v1".
+ */
 export function getVersionApi(): string {
-  return import.meta.env.VITE_API_VERSION || '/v1';
+  const raw = (import.meta.env as any).VITE_API_VERSION || '/v1';
+  // Ensure leading slash
+  return raw.startsWith('/') ? raw : `/${raw}`;
 }
 // Capitaliza a primeira letra de cada palavra (similar ao ucwords do PHP)
 export function ucwords(str: string): string {
@@ -49,8 +66,13 @@ export function mascaraCpf(cpf: string): string {
     return apenasNumeros.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
   }
 }
+/**
+ * getApiUrl
+ * pt-BR: Constrói a URL completa da API juntando base + versão.
+ * en-US: Builds the full API URL by combining base + version.
+ */
 export function getApiUrl(): string {
-  return getTenantApiUrl()+''+getVersionApi() || 'http://{tenant_id}.localhost:8000/api/v1';
+  return `${getTenantApiUrl()}${getVersionApi()}`;
 }
 // Converte data do formato 'YYYY-MM-DD' para 'DD/MM/YYYY' (padrão brasileiro)
 export function dataParaBR(dataISO: string): string {

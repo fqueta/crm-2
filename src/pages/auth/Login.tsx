@@ -27,6 +27,13 @@ const loginSchema = z.object({
 
 type LoginFormData = z.infer<typeof loginSchema>;
 
+/**
+ * Login
+ * pt-BR: Tela de login com tema do Aeroclube de Juiz de Fora (ACJF).
+ *        Atualiza paleta para tons de azul e identidade institucional.
+ * en-US: Login screen themed to Aeroclube de Juiz de Fora.
+ *        Uses blue palette and institutional identity.
+ */
 export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [loginSuccess, setLoginSuccess] = useState(false);
@@ -62,13 +69,13 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-600 via-purple-700 to-purple-800 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-blue-600 via-blue-700 to-blue-800 flex items-center justify-center p-4">
       {/* Elementos decorativos de fundo */}
       <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute -top-40 -left-40 w-80 h-80 bg-purple-500/20 rounded-full blur-3xl"></div>
-        <div className="absolute -bottom-40 -right-40 w-80 h-80 bg-purple-400/20 rounded-full blur-3xl"></div>
-        <div className="absolute top-1/2 left-1/4 w-60 h-60 bg-purple-300/10 rounded-full blur-2xl"></div>
-        <div className="absolute bottom-1/4 right-1/3 w-40 h-40 bg-purple-200/10 rounded-full blur-xl"></div>
+        <div className="absolute -top-40 -left-40 w-80 h-80 bg-blue-500/20 rounded-full blur-3xl"></div>
+        <div className="absolute -bottom-40 -right-40 w-80 h-80 bg-blue-400/20 rounded-full blur-3xl"></div>
+        <div className="absolute top-1/2 left-1/4 w-60 h-60 bg-blue-300/10 rounded-full blur-2xl"></div>
+        <div className="absolute bottom-1/4 right-1/3 w-40 h-40 bg-blue-200/10 rounded-full blur-xl"></div>
       </div>
 
       <div className="relative z-10 flex w-full max-w-6xl mx-auto">
@@ -78,7 +85,7 @@ export default function Login() {
             {/* Ícone principal */}
             <div className="w-64 h-64 bg-white/10 backdrop-blur-sm rounded-3xl flex items-center justify-center mb-8 mx-auto border border-white/20">
               <div className="w-32 h-32 bg-white rounded-2xl flex items-center justify-center">
-                <svg className="w-20 h-20 text-purple-600" fill="currentColor" viewBox="0 0 24 24">
+                <svg className="w-20 h-20 text-blue-600" fill="currentColor" viewBox="0 0 24 24">
                   <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
                 </svg>
               </div>
@@ -95,21 +102,19 @@ export default function Login() {
                 variant="ghost"
                 size="sm"
                 asChild
-                className="text-purple-700 hover:bg-purple-50 p-2"
+                className="text-blue-700 hover:bg-blue-50 p-2"
               >
                 <Link to="/">
                   <ArrowLeft className="h-4 w-4" />
                 </Link>
               </Button>
               <div className="flex-1 text-center">
-                <div className="w-12 h-12 bg-yellow-400 rounded-full flex items-center justify-center mx-auto mb-2">
-                  <span className="text-black font-bold text-lg">Y</span>
-                </div>
-                <h1 className="text-xl font-bold text-purple-700">Yellow Club</h1>
+                <img src="/logo.png" alt="Aeroclube JF" className="h-10 mx-auto mb-2" />
+                <h1 className="text-xl font-bold text-blue-700">Aeroclube de Juiz de Fora</h1>
               </div>
             </div>
 
-            <p className="text-purple-600 text-sm mb-6 text-center">
+            <p className="text-blue-600 text-sm mb-6 text-center">
               Entre em sua conta para continuar
             </p>
 
@@ -120,12 +125,12 @@ export default function Login() {
                   name="email"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-purple-700 font-medium">Email</FormLabel>
+                      <FormLabel className="text-blue-700 font-medium">Email</FormLabel>
                       <FormControl>
                         <Input
                           type="email"
                           placeholder="seu@email.com"
-                          className="border-purple-200 focus:border-purple-500 focus:ring-purple-500"
+                          className="border-blue-200 focus:border-blue-500 focus:ring-blue-500"
                           {...field}
                         />
                       </FormControl>
@@ -139,13 +144,13 @@ export default function Login() {
                   name="password"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-purple-700 font-medium">Senha</FormLabel>
+                      <FormLabel className="text-blue-700 font-medium">Senha</FormLabel>
                       <FormControl>
                         <div className="relative">
                           <Input
                             type={showPassword ? 'text' : 'password'}
                             placeholder="Sua senha"
-                            className="border-purple-200 focus:border-purple-500 focus:ring-purple-500 pr-10"
+                            className="border-blue-200 focus:border-blue-500 focus:ring-blue-500 pr-10"
                             {...field}
                           />
                           <button
@@ -154,9 +159,9 @@ export default function Login() {
                             onClick={() => setShowPassword(!showPassword)}
                           >
                             {showPassword ? (
-                              <EyeOff className="h-4 w-4 text-purple-400" />
+                              <EyeOff className="h-4 w-4 text-blue-400" />
                             ) : (
-                              <Eye className="h-4 w-4 text-purple-400" />
+                              <Eye className="h-4 w-4 text-blue-400" />
                             )}
                           </button>
                         </div>
@@ -176,10 +181,10 @@ export default function Login() {
                           <Checkbox
                             checked={field.value}
                             onCheckedChange={field.onChange}
-                            className="border-purple-300 data-[state=checked]:bg-purple-600 data-[state=checked]:border-purple-600"
+                            className="border-blue-300 data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600"
                           />
                         </FormControl>
-                        <FormLabel className="text-sm text-purple-600">
+                        <FormLabel className="text-sm text-blue-600">
                           Lembrar de mim
                         </FormLabel>
                       </FormItem>
@@ -188,7 +193,7 @@ export default function Login() {
                   
                   <Link
                     to="/forgot-password"
-                    className="text-sm text-purple-600 hover:text-purple-800 underline font-medium"
+                    className="text-sm text-blue-600 hover:text-blue-800 underline font-medium"
                   >
                     Esqueceu a senha?
                   </Link>
@@ -196,7 +201,7 @@ export default function Login() {
 
                 <Button 
                   type="submit" 
-                  className="w-full bg-purple-700 hover:bg-purple-800 text-white font-medium" 
+                  className="w-full bg-blue-700 hover:bg-blue-800 text-white font-medium" 
                   disabled={isLoading}
                 >
                   {isLoading ? 'Entrando...' : 'Entrar'}
@@ -205,8 +210,8 @@ export default function Login() {
             </Form>
 
             <div className="text-center text-sm mt-4">
-              <span className="text-purple-600">Não tem uma conta? </span>
-              <Link to="/public-client-form" className="text-purple-600 underline hover:text-purple-800 font-medium">
+              <span className="text-blue-100">Não tem uma conta? </span>
+              <Link to="/public-client-form" className="text-blue-100 underline hover:text-white font-medium">
                 Cadastre-se
               </Link>
             </div>

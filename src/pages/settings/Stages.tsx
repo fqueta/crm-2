@@ -38,7 +38,36 @@ export default function Stages() {
    * en-US: Debounced search value to avoid filtering on every keystroke.
    */
   const debouncedSearch = useDebounce(search, 300);
-  const { data: funnelsData, isLoading: isLoadingFunnels } = useFunnelsList({ page, per_page: 10 });
+  /**
+   * useFunnelsList
+   * pt-BR: Lista funis com opções seguras para evitar retries infinitos e refetch em foco.
+   * en-US: Lists funnels with safe options to avoid infinite retries and refetch on focus.
+   */
+  const { data: funnelsData, isLoading: isLoadingFunnels, error: funnelsError } = useFunnelsList(
+    { page, per_page: 10 },
+    {
+      staleTime: 5 * 60 * 1000, // 5min
+      refetchOnWindowFocus: false,
+      refetchOnReconnect: false,
+      retry: (failureCount: number, error: any) => {
+        // Evita retries para erros de cliente (4xx)
+        if (error?.status >= 400 && error?.status < 500) return false;
+        return failureCount < 1;
+      },
+    }
+  );
+  
+  /**
+   * Notificação de erro de funis
+   * pt-BR: Exibe toast quando a listagem de funis falha.
+   * en-US: Shows a toast when funnels listing fails.
+   */
+  useEffect(() => {
+    if (funnelsError) {
+      const message = (funnelsError as any)?.message || 'Falha ao carregar funis';
+      toast({ title: 'Erro ao carregar funis', description: message, variant: 'destructive' });
+    }
+  }, [funnelsError]);
   // Evita loops de renderização: memoiza o fallback [] para não criar nova referência a cada render
   const funnels = useMemo(() => funnelsData?.data ?? [], [funnelsData?.data]);
 

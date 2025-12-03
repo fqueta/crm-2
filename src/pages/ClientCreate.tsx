@@ -61,9 +61,14 @@ const isValidCNPJ = (cnpj: string): boolean => {
   return digit2 === parseInt(cleanCNPJ.charAt(13));
 };
 
+/**
+ * isValidPhone
+ * pt-BR: Valida telefone aceitando DDI; entre 10 e 15 dígitos (E.164).
+ * en-US: Validates phone accepting country code; between 10 and 15 digits (E.164).
+ */
 const isValidPhone = (phone: string): boolean => {
   const cleanPhone = phone.replace(/\D/g, '');
-  return cleanPhone.length >= 10 && cleanPhone.length <= 11;
+  return cleanPhone.length >= 10 && cleanPhone.length <= 15;
 };
 
 const isValidCEP = (cep: string): boolean => {

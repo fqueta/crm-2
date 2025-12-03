@@ -299,21 +299,45 @@ export function UserForm({
           )}
           {showPhones && (
             <>
-              <MaskedInputField
+              {/* Celular com máscara DDI */}
+              <FormField
+                control={form.control}
                 name="config.celular"
-                control={form.control}
-                label="Celular"
-                mask="(dd) ddddd-dddd"
-                placeholder="(00) 00000-0000"
-                disabled={isLoadingPermissions}
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Celular</FormLabel>
+                    <FormControl>
+                      <Input
+                        {...field}
+                        value={field.value || ''}
+                        onChange={(e) => field.onChange(phoneApplyMask(e.target.value))}
+                        placeholder="+55 (11) 99999-9999"
+                        disabled={isLoadingPermissions}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
               />
-              <MaskedInputField
-                name="config.telefone_comercial"
+              {/* Telefone comercial com máscara DDI */}
+              <FormField
                 control={form.control}
-                label="Telefone"
-                mask="(dd) dddd-dddd"
-                placeholder="(00) 0000-0000"
-                disabled={isLoadingPermissions}
+                name="config.telefone_comercial"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Telefone</FormLabel>
+                    <FormControl>
+                      <Input
+                        {...field}
+                        value={field.value || ''}
+                        onChange={(e) => field.onChange(phoneApplyMask(e.target.value))}
+                        placeholder="+55 (11) 3333-4444"
+                        disabled={isLoadingPermissions}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
               />
             </>
           )}

@@ -125,4 +125,10 @@ export interface ClientsListParams {
   page?: number;
   per_page?: number;
   excluido?: 's' | 'n';
+  /**
+   * permission_id
+   * pt-BR: Filtro opcional pelo ID de permissão do cliente (ex.: 8).
+   * en-US: Optional filter by client's permission ID (e.g., 8).
+   */
+  permission_id?: number;
 }

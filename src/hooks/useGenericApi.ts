@@ -2,12 +2,30 @@ import { useQuery, useMutation, useQueryClient, UseQueryOptions, UseMutationOpti
 import { toast } from 'sonner';
 import { PaginatedResponse } from '@/types/index';
 
+/**
+ * GenericApiService interface
+ * pt-BR: Interface de serviço genérico usada pelos hooks. Importante: o método de deleção
+ *         deve ser `deleteById(id)` para evitar colisão com o método protegido `delete(endpoint)`
+ *         da classe base e garantir que o endpoint correto (`/<resource>/{id}`) seja chamado.
+ * en-US: Generic service interface used by hooks. Important: the deletion method must be
+ *         `deleteById(id)` to avoid collision with the protected `delete(endpoint)` method
+ *         from the base class and ensure the correct endpoint (`/<resource>/{id}`) is called.
+ */
 export interface GenericApiService<T, CreateInput, UpdateInput, ListParams = any> {
   list(params?: ListParams): Promise<PaginatedResponse<T>>;
   getById(id: string): Promise<T>;
   create(data: CreateInput): Promise<T>;
   update(id: string, data: UpdateInput): Promise<T>;
-  delete(id: string): Promise<void>;
+  /**
+   * pt-BR: Preferencial — evita colisão com método protegido `delete(endpoint)`.
+   * en-US: Preferred — avoids collision with protected `delete(endpoint)`.
+   */
+  deleteById?: (id: string) => Promise<void>;
+  /**
+   * pt-BR: Fallback — alguns serviços implementam `delete(id)` diretamente.
+   * en-US: Fallback — some services implement `delete(id)` directly.
+   */
+  delete?: (id: string) => Promise<void>;
 }
 
 export interface UseGenericApiOptions<T, CreateInput, UpdateInput, ListParams = any> {
@@ -112,13 +130,22 @@ export function useGenericApi<T, CreateInput, UpdateInput, ListParams = any>(
 
   /**
    * Hook para deletar entidade
+   * pt-BR: Usa `service.deleteById(id)` para evitar chamada ao método interno protegido `delete(endpoint)`.
+   * en-US: Uses `service.deleteById(id)` to avoid calling the internal protected `delete(endpoint)` method.
    * @param mutationOptions - Opções do useMutation
    */
   const useDelete = (
     mutationOptions?: UseMutationOptions<void, Error, string>
   ) => {
     return useMutation({
-      mutationFn: (id: string) => service.delete(id),
+      /**
+       * pt-BR: Usa `deleteById` se disponível; caso contrário, usa `delete`.
+       * en-US: Uses `deleteById` if available; otherwise falls back to `delete`.
+       */
+      mutationFn: (id: string) =>
+        service.deleteById
+          ? service.deleteById(id)
+          : (service.delete ? service.delete(id) : Promise.reject(new Error('Método de deleção não disponível'))),
       onSuccess: (data, id) => {
         queryClient.invalidateQueries({ queryKey: [queryKey] });
         queryClient.removeQueries({ queryKey: [queryKey, 'detail', id] });

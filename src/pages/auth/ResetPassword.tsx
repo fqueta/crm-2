@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams, useParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -30,14 +30,23 @@ const resetPasswordSchema = z.object({
 type ResetPasswordFormData = z.infer<typeof resetPasswordSchema>;
 
 export default function ResetPassword() {
+  /**
+   * ResetPassword
+   * pt-BR: Página de redefinição de senha via link (token + email).
+   *        Aplica o tema azul do Aeroclube de Juiz de Fora, mantendo a lógica intacta.
+   * en-US: Password reset page via link (token + email).
+   *        Applies ACJF blue theme while preserving the original logic.
+   */
   const [showPassword, setShowPassword] = useState(false);
   const [showPasswordConfirmation, setShowPasswordConfirmation] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const { token: tokenFromParams } = useParams();
 
   const email = searchParams.get('email') || '';
-  const token = searchParams.get('token') || '';
+  // Suporta token por query (?token=) e por segmento de rota (/reset-password/:token)
+  const token = searchParams.get('token') || tokenFromParams || '';
 
   const form = useForm<ResetPasswordFormData>({
     resolver: zodResolver(resetPasswordSchema),
@@ -86,15 +95,23 @@ export default function ResetPassword() {
   if (!email || !token) {
     return (
       <AuthLayout title="Link Inválido">
+        {/* Brand header — ACJF */}
+        <div className="flex items-center justify-center gap-3 mb-2">
+          <img src="/logo.png" alt="Aeroclube JF" className="h-10" />
+          <div>
+            <p className="text-sm font-semibold text-blue-800">Aeroclube de Juiz de Fora</p>
+            <p className="text-xs text-blue-600">Escola de aviação</p>
+          </div>
+        </div>
         <div className="text-center space-y-4">
           <p className="text-muted-foreground">
             O link de recuperação de senha é inválido ou expirou.
           </p>
           <div className="space-y-2">
-            <Button asChild className="w-full">
+            <Button asChild className="w-full bg-blue-700 hover:bg-blue-800">
               <Link to="/forgot-password">Solicitar Novo Link</Link>
             </Button>
-            <Button variant="outline" asChild className="w-full">
+            <Button variant="outline" asChild className="w-full border-blue-300 text-blue-700 hover:bg-blue-50">
               <Link to="/login">Voltar ao Login</Link>
             </Button>
           </div>
@@ -108,6 +125,15 @@ export default function ResetPassword() {
       title="Nova Senha" 
       subtitle="Digite sua nova senha"
     >
+      {/* Brand header — ACJF */}
+      <div className="flex items-center justify-center gap-3 mb-2">
+        <img src="/logo.png" alt="Aeroclube JF" className="h-10" />
+        <div>
+          <p className="text-sm font-semibold text-blue-800">Aeroclube de Juiz de Fora</p>
+          <p className="text-xs text-blue-600">Escola de aviação</p>
+        </div>
+      </div>
+
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
           <FormField
@@ -178,7 +204,7 @@ export default function ResetPassword() {
 
           <Button 
             type="submit" 
-            className="w-full" 
+            className="w-full bg-blue-700 hover:bg-blue-800" 
             disabled={isLoading}
           >
             {isLoading ? 'Redefinindo...' : 'Redefinir Senha'}
@@ -187,7 +213,7 @@ export default function ResetPassword() {
       </Form>
 
       <div className="text-center text-sm">
-        <Link to="/login" className="text-primary hover:underline">
+        <Link to="/login" className="text-blue-700 hover:underline">
           Voltar ao Login
         </Link>
       </div>

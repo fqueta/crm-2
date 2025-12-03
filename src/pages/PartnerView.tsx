@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { usePartner } from '@/hooks/partners';
+import { phoneApplyMask, phoneRemoveMask } from '@/lib/masks/phone-apply-mask';
 import { PartnerRecord } from '@/types/partners';
 
 /**
@@ -27,13 +28,9 @@ function formatCNPJ(cnpj: string | null): string {
  * Formata telefone para exibição
  */
 function formatPhone(phone: string): string {
-  const cleaned = phone.replace(/\D/g, '');
-  if (cleaned.length === 11) {
-    return cleaned.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3');
-  } else if (cleaned.length === 10) {
-    return cleaned.replace(/(\d{2})(\d{4})(\d{4})/, '($1) $2-$3');
-  }
-  return phone;
+  const cleaned = phoneRemoveMask(phone || '');
+  const masked = phoneApplyMask(cleaned);
+  return masked || 'Não informado';
 }
 
 /**

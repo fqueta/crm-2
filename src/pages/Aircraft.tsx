@@ -282,14 +282,19 @@ export default function Aircraft() {
                     <div className="space-y-2">
                       <label className="text-sm font-medium">Proprietário</label>
                       <Select
-                        value={filters.client_id || ''}
-                        onValueChange={(val) => setFilters((f) => ({ ...f, client_id: val || undefined }))}
+                        value={filters.client_id || undefined}
+                        /**
+                         * onValueChange
+                         * pt-BR: Converte o valor especial "all" para `undefined` (sem filtro de proprietário).
+                         * en-US: Converts special value "all" to `undefined` (no owner filter).
+                         */
+                        onValueChange={(val) => setFilters((f) => ({ ...f, client_id: val === 'all' ? undefined : val }))}
                       >
                         <SelectTrigger>
                           <SelectValue placeholder="Todos os proprietários" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="">Todos</SelectItem>
+                          <SelectItem value="all">Todos</SelectItem>
                           {Array.isArray((clients as any).data) && (clients as any).data.map((client: any) => (
                             <SelectItem key={client.id} value={client.id}>{client.name}</SelectItem>
                           ))}

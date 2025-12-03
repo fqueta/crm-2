@@ -217,6 +217,11 @@ export function PartnerForm({ form, isLoading = false }: PartnerFormProps) {
               <Input
                 id="config.celular"
                 {...register('config.celular')}
+                onChange={(e) => {
+                  const masked = phoneApplyMask(e.target.value);
+                  // Atualiza valor mascarado mantendo compatibilidade com register
+                  (e.target as HTMLInputElement).value = masked;
+                }}
                 disabled={isLoading}
               />
             </div>
@@ -228,6 +233,10 @@ export function PartnerForm({ form, isLoading = false }: PartnerFormProps) {
               <Input
                 id="config.telefone_residencial"
                 {...register('config.telefone_residencial')}
+                onChange={(e) => {
+                  const masked = phoneApplyMask(e.target.value);
+                  (e.target as HTMLInputElement).value = masked;
+                }}
                 disabled={isLoading}
               />
             </div>
@@ -237,6 +246,10 @@ export function PartnerForm({ form, isLoading = false }: PartnerFormProps) {
               <Input
                 id="config.telefone_comercial"
                 {...register('config.telefone_comercial')}
+                onChange={(e) => {
+                  const masked = phoneApplyMask(e.target.value);
+                  (e.target as HTMLInputElement).value = masked;
+                }}
                 disabled={isLoading}
               />
             </div>

@@ -8,6 +8,7 @@ import { useClientById } from '@/hooks/clients';
 import { getMockClientById } from '@/mocks/clients';
 import { ClientRecord } from '@/types/clients';
 import { useFunnel, useStagesList } from '@/hooks/funnels';
+import { phoneApplyMask } from '@/lib/masks/phone-apply-mask';
 
 
 
@@ -201,14 +202,9 @@ export default function ClientView() {
    * Formata telefone para exibição
    */
   const formatPhone = (phone: string) => {
-    if (!phone) return 'Não informado';
-    if (phone.length === 11) {
-      return phone.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3');
-    }
-    if (phone.length === 10) {
-      return phone.replace(/(\d{2})(\d{4})(\d{4})/, '($1) $2-$3');
-    }
-    return phone;
+    const cleaned = (phone || '').replace(/\D/g, '');
+    const masked = phoneApplyMask(cleaned);
+    return masked || 'Não informado';
   };
 
   if (!useMock && isLoadingClient) {

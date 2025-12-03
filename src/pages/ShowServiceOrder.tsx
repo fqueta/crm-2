@@ -33,7 +33,7 @@ import {
   Calendar,
   
 } from "lucide-react";
-import {
+import { 
   Table,
   TableBody,
   TableCell,
@@ -41,6 +41,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { phoneApplyMask } from '@/lib/masks/phone-apply-mask';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -470,15 +471,9 @@ function ClientDetailsCard({ client }: { client: any }) {
 
   const formatPhone = (phone: string) => {
     if (!phone) return "-";
-    // Remove caracteres não numéricos
     const cleaned = phone.replace(/\D/g, '');
-    // Formata como (XX) XXXXX-XXXX ou (XX) XXXX-XXXX
-    if (cleaned.length === 11) {
-      return `(${cleaned.slice(0, 2)}) ${cleaned.slice(2, 7)}-${cleaned.slice(7)}`;
-    } else if (cleaned.length === 10) {
-      return `(${cleaned.slice(0, 2)}) ${cleaned.slice(2, 6)}-${cleaned.slice(6)}`;
-    }
-    return phone;
+    const masked = phoneApplyMask(cleaned);
+    return masked || "-";
   };
 
   return (

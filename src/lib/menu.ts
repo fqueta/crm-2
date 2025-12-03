@@ -84,6 +84,13 @@ export const defaultMenu: MenuItemDTO[] = [
     can_view: true
   },
   {
+    title: "Vendas",
+    url: "/admin/sales",
+    icon: "BarChart3",
+    permission: "sales.view",
+    can_view: true
+  },
+  {
     title: "Parceiros",
     url: "/admin/partners",
     icon: "Users",
@@ -133,6 +140,12 @@ export const defaultMenu: MenuItemDTO[] = [
         title: "Cursos",
         url: "/admin/school/courses",
         permission: "school.courses.view",
+        can_view: true
+      },
+      {
+        title: "Turmas",
+        url: "/admin/school/classes",
+        permission: "school.classes.view",
         can_view: true
       }
     ]

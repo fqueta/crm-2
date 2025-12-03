@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import { Settings, Save, Palette, Link } from "lucide-react";
 import { systemSettingsService, AdvancedSystemSettings } from "@/services/systemSettingsService";
 import { useApiOptions } from "@/hooks/useApiOptions";
+import { useFunnelsList, useStagesList } from "@/hooks/funnels";
 
 /**
  * Página de configurações do sistema
@@ -35,6 +36,37 @@ export default function SystemSettings() {
   
   // Estado local para as configurações de API (antes de salvar)
   const [localApiOptions, setLocalApiOptions] = useState<{[key: number]: string}>({});
+  /**
+   * getCurrentOptionValue
+   * pt-BR: Retorna o valor atual de uma opção, priorizando edição local.
+   * en-US: Returns current option value, prioritizing local edits.
+   */
+  const getCurrentOptionValue = (option: any) => {
+    return localApiOptions[option.id] !== undefined ? localApiOptions[option.id] : option.value;
+  };
+  /**
+   * Funis/Etapas para selects de padrão
+   * pt-BR: Carrega funis (área de vendas) e etapas do funil selecionado.
+   * en-US: Loads funnels (sales area) and stages for the selected funnel.
+   */
+  const { data: funnelsData, isLoading: isLoadingFunnels } = useFunnelsList({ per_page: 200 });
+  const salesFunnels = React.useMemo(() => {
+    const list: any[] = (funnelsData?.data || (funnelsData as any)?.items || []);
+    return list.filter((f) => String(f?.settings?.place || '').toLowerCase() === 'vendas');
+  }, [funnelsData]);
+  const defaultFunnelOption = React.useMemo(() => (
+    (apiOptions || []).find((o: any) => o.url === 'default_funil_vendas_id') || null
+  ), [apiOptions]);
+  const defaultStageOption = React.useMemo(() => (
+    (apiOptions || []).find((o: any) => o.url === 'default_etapa_vendas_id') || null
+  ), [apiOptions]);
+  const selectedDefaultFunnelId = React.useMemo(() => (
+    defaultFunnelOption ? String(getCurrentOptionValue(defaultFunnelOption) || '') : ''
+  ), [defaultFunnelOption, localApiOptions]);
+  const { data: stagesData, isLoading: isLoadingStages } = useStagesList(String(selectedDefaultFunnelId || ''), { per_page: 200 }, { enabled: !!selectedDefaultFunnelId });
+  const stagesForDefaultFunnel = React.useMemo(() => (
+    stagesData?.data || (stagesData as any)?.items || []
+  ), [stagesData]);
 
   // Estados para configurações básicas - Switch
   const [basicSwitchSettings, setBasicSwitchSettings] = useState(() => {
@@ -260,11 +292,37 @@ export default function SystemSettings() {
   };
 
   /**
-   * Obtém o valor atual de uma opção (local ou original)
+   * handleSaveFunctionalityOptions
+   * pt-BR: Monta o payload com todas as opções do endpoint `/options/all` e salva em lote.
+   * en-US: Builds the payload with all options from `/options/all` and saves them in batch.
    */
-  const getCurrentOptionValue = (option: any) => {
-    return localApiOptions[option.id] !== undefined ? localApiOptions[option.id] : option.value;
+  const handleSaveFunctionalityOptions = async () => {
+    setIsLoading(true);
+    try {
+      const dataToSave: { [key: string]: string } = {};
+      (apiOptions || []).forEach((option: any) => {
+        const currentValue = getCurrentOptionValue(option);
+        dataToSave[option.url] = currentValue || '';
+      });
+      if (Object.keys(dataToSave).length === 0) {
+        toast.info('Nenhuma configuração encontrada para salvar');
+        return;
+      }
+      const success = await saveMultipleOptions(dataToSave);
+      if (success) {
+        toast.success('Configurações de funcionalidade salvas com sucesso!');
+      } else {
+        toast.error('Erro ao salvar configurações de funcionalidade');
+      }
+    } catch (error) {
+      console.error('Erro ao salvar configurações de funcionalidade:', error);
+      toast.error('Erro ao salvar configurações de funcionalidade');
+    } finally {
+      setIsLoading(false);
+    }
   };
+
+  
 
   /**
    * Salva configurações gerais
@@ -1051,8 +1109,114 @@ export default function SystemSettings() {
                    </Button>
                  </div>
                )}
-             </CardContent>
-           </Card>
+           </CardContent>
+          </Card>
+
+          {/* Card - Configurações de Funcionalidade */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Configurações de Funcionalidade</CardTitle>
+              <CardDescription>
+                Lista de inputs (texto) carregada de `/options/all` para IDs, URLs e tokens.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {apiLoading ? (
+                <div className="flex items-center justify-center p-8">
+                  <div className="text-muted-foreground">Carregando configurações...</div>
+                </div>
+              ) : apiError ? (
+                <div className="flex items-center justify-center p-8">
+                  <div className="text-red-500">{apiError}</div>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 gap-4">
+                  {(apiOptions || []).map((option: any) => (
+                    <div key={option.id} className="space-y-2">
+                      <Label htmlFor={`func-option-${option.id}`}>{option.name}</Label>
+                      {option.url === 'default_funil_vendas_id' ? (
+                        <Select
+                          value={String(getCurrentOptionValue(option) || '')}
+                          onValueChange={(val) => {
+                            handleApiOptionChange(option.id, val);
+                            if (defaultStageOption) {
+                              handleApiOptionChange(defaultStageOption.id, '');
+                            }
+                          }}
+                        >
+                          <SelectTrigger className="w-full">
+                            <SelectValue placeholder="Selecione o funil de vendas" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {isLoadingFunnels ? (
+                              <SelectItem value="__loading_funnels__" disabled>Carregando funis...</SelectItem>
+                            ) : (
+                              salesFunnels.map((f: any) => (
+                                <SelectItem key={String(f.id)} value={String(f.id)}>
+                                  {f.name}
+                                </SelectItem>
+                              ))
+                            )}
+                          </SelectContent>
+                        </Select>
+                      ) : option.url === 'default_etapa_vendas_id' ? (
+                        <Select
+                          value={String(getCurrentOptionValue(option) || '')}
+                          onValueChange={(val) => handleApiOptionChange(option.id, val)}
+                          disabled={!selectedDefaultFunnelId || isLoadingStages}
+                        >
+                          <SelectTrigger className="w-full">
+                            <SelectValue placeholder={selectedDefaultFunnelId ? 'Selecione a etapa' : 'Selecione um funil primeiro'} />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {isLoadingStages ? (
+                              <SelectItem value="__loading_stages__" disabled>Carregando etapas...</SelectItem>
+                            ) : (
+                              stagesForDefaultFunnel.map((s: any) => (
+                                <SelectItem key={String(s.id)} value={String(s.id)}>
+                                  {s.name}
+                                </SelectItem>
+                              ))
+                            )}
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        <Input
+                          id={`func-option-${option.id}`}
+                          type="text"
+                          name={option.url}
+                          value={getCurrentOptionValue(option)}
+                          onChange={(e) => handleApiOptionChange(option.id, e.target.value)}
+                          placeholder={`Digite ${option.name.toLowerCase()}`}
+                          className="w-full"
+                        />
+                      )}
+                      {option.obs && (
+                        <p className="text-sm text-muted-foreground">{option.obs}</p>
+                      )}
+                    </div>
+                  ))}
+
+                  {(apiOptions || []).length === 0 && (
+                    <div className="text-center p-8 text-muted-foreground">Nenhuma configuração encontrada.</div>
+                  )}
+                </div>
+              )}
+
+              {(apiOptions || []).length > 0 && (
+                <div className="flex justify-end pt-4 border-t">
+                  <Button
+                    onClick={handleSaveFunctionalityOptions}
+                    disabled={isLoading || Object.keys(localApiOptions).length === 0}
+                    className="flex items-center space-x-2"
+                  >
+                    <Save className="h-4 w-4" />
+                    <span>{isLoading ? 'Salvando...' : 'Salvar Configurações'}</span>
+                  </Button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
     </div>

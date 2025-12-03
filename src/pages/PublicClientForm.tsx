@@ -17,6 +17,7 @@ import {
 import { toast } from 'sonner';
 import { mascaraCpf } from '@/lib/qlib';
 import { Eye, EyeOff, ArrowLeft } from 'lucide-react';
+import { phoneApplyMask, phoneRemoveMask } from '@/lib/masks/phone-apply-mask';
 // import { useGenericApi } from '@/hooks/useGenericApi';
 import { 
   activeClientsService, 
@@ -34,7 +35,12 @@ const formSchema = z.object({
   name: z.string().min(2, 'Nome é obrigatório'),
   cpf: z.string().min(14, 'CPF deve estar completo').max(14, 'CPF inválido'),
   email: z.string().email('E-mail inválido'),
-  phone: z.string().min(10, 'Número de telefone é obrigatório'),
+  // pt-BR: Telefone com DDI; valida entre 10 e 15 dígitos.
+  // en-US: Phone with country code; validate between 10 and 15 digits.
+  phone: z.string().refine((val) => {
+    const digits = (val || '').replace(/\D/g, '');
+    return digits.length >= 10 && digits.length <= 15;
+  }, 'Número de telefone é obrigatório'),
   password: z.string().min(6, 'Senha deve ter pelo menos 6 caracteres'),
   confirmPassword: z.string().min(6, 'Confirmação de senha é obrigatória'),
   termsAccepted: z.boolean().refine(val => val === true, {
@@ -51,7 +57,11 @@ const formSchema = z.object({
 type FormData = z.infer<typeof formSchema>;
 
 /**
- * Componente da landing page pública para cadastro de clientes
+ * PublicClientForm
+ * pt-BR: Página pública de cadastro de clientes alinhada ao tema do Aeroclube de Juiz de Fora (ACJF).
+ *        Atualiza paleta para tons de azul e identidade institucional, preservando lógica existente.
+ * en-US: Public registration page themed to Aeroclube de Juiz de Fora.
+ *        Uses blue palette and institutional identity, keeping existing logic intact.
  */
 export default function PublicClientForm() {
   const { cpf } = useParams<{ cpf: string }>();
@@ -104,7 +114,7 @@ export default function PublicClientForm() {
         name: data.name,
         cpf: data.cpf.replace(/\D/g, ''), // Remove máscara do CPF
         email: data.email,
-        phone: data.phone,
+        phone: phoneRemoveMask(data.phone),
         termsAccepted: data.termsAccepted,
         privacyAccepted: data.privacyAccepted,
         password: data.password
@@ -152,13 +162,13 @@ export default function PublicClientForm() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-600 via-purple-700 to-purple-800 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-blue-600 via-blue-700 to-blue-800 flex items-center justify-center p-4">
       {/* Elementos decorativos de fundo */}
       <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute -top-40 -left-40 w-80 h-80 bg-purple-500/20 rounded-full blur-3xl"></div>
-        <div className="absolute -bottom-40 -right-40 w-80 h-80 bg-purple-400/20 rounded-full blur-3xl"></div>
-        <div className="absolute top-1/2 left-1/4 w-60 h-60 bg-purple-300/10 rounded-full blur-2xl"></div>
-        <div className="absolute bottom-1/4 right-1/3 w-40 h-40 bg-purple-200/10 rounded-full blur-xl"></div>
+        <div className="absolute -top-40 -left-40 w-80 h-80 bg-blue-500/20 rounded-full blur-3xl"></div>
+        <div className="absolute -bottom-40 -right-40 w-80 h-80 bg-blue-400/20 rounded-full blur-3xl"></div>
+        <div className="absolute top-1/2 left-1/4 w-60 h-60 bg-blue-300/10 rounded-full blur-2xl"></div>
+        <div className="absolute bottom-1/4 right-1/3 w-40 h-40 bg-blue-200/10 rounded-full blur-xl"></div>
       </div>
 
       <div className="relative z-10 flex w-full max-w-6xl mx-auto">
@@ -168,7 +178,7 @@ export default function PublicClientForm() {
             {/* Ícone principal */}
             <div className="w-64 h-64 bg-white/10 backdrop-blur-sm rounded-3xl flex items-center justify-center mb-8 mx-auto border border-white/20">
               <div className="w-32 h-32 bg-white rounded-2xl flex items-center justify-center">
-                <svg className="w-20 h-20 text-purple-600" fill="currentColor" viewBox="0 0 24 24">
+                <svg className="w-20 h-20 text-blue-600" fill="currentColor" viewBox="0 0 24 24">
                   <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
                   <path d="M19 14v3h3v2h-3v3h-2v-3h-3v-2h3v-3h2z"/>
                 </svg>
@@ -186,22 +196,20 @@ export default function PublicClientForm() {
                 variant="ghost"
                 size="sm"
                 asChild
-                className="text-purple-700 hover:bg-purple-50 p-2"
+                className="text-blue-700 hover:bg-blue-50 p-2"
               >
                 <Link to="/">
                   <ArrowLeft className="h-4 w-4" />
                 </Link>
               </Button>
               <div className="flex-1 text-center">
-                <div className="w-12 h-12 bg-yellow-400 rounded-full flex items-center justify-center mx-auto mb-2">
-                  <span className="text-black font-bold text-lg">Y</span>
-                </div>
-                <h1 className="text-xl font-bold text-purple-700">Yellow Club</h1>
+                <img src="/logo.png" alt="Aeroclube JF" className="h-10 mx-auto mb-2" />
+                <h1 className="text-xl font-bold text-blue-700">Aeroclube de Juiz de Fora</h1>
               </div>
             </div>
 
-            <p className="text-purple-600 text-sm mb-6 text-center">
-              Cadastre-se e aproveite nossos benefícios
+            <p className="text-blue-600 text-sm mb-6 text-center">
+              Para iniciar sua jornada aeronáutica, crie sua conta.
             </p>
 
             <Form {...form}>
@@ -211,11 +219,11 @@ export default function PublicClientForm() {
                   name="name"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="text-purple-700 font-medium">Nome completo*</FormLabel>
+                        <FormLabel className="text-blue-700 font-medium">Nome completo*</FormLabel>
                         <FormControl>
                           <Input
                             placeholder="Nome completo"
-                            className="border-purple-200 focus:border-purple-500 focus:ring-purple-500"
+                            className="border-blue-200 focus:border-blue-500 focus:ring-blue-500"
                             {...field}
                           />
                         </FormControl>
@@ -229,11 +237,11 @@ export default function PublicClientForm() {
                   name="cpf"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="text-purple-700 font-medium">CPF*</FormLabel>
+                        <FormLabel className="text-blue-700 font-medium">CPF*</FormLabel>
                         <FormControl>
                           <Input
                             placeholder="000.000.000-00"
-                            className="border-gray-300 focus:border-purple-500 focus:ring-purple-500"
+                            className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                             {...field}
                             onChange={(e) => {
                               const maskedValue = mascaraCpf(e.target.value);
@@ -252,12 +260,12 @@ export default function PublicClientForm() {
                   name="email"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="text-purple-700 font-medium">E-mail*</FormLabel>
+                        <FormLabel className="text-blue-700 font-medium">E-mail*</FormLabel>
                         <FormControl>
                           <Input
                             type="email"
                             placeholder="E-mail"
-                            className="border-gray-300 focus:border-purple-500 focus:ring-purple-500"
+                            className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                             {...field}
                           />
                         </FormControl>
@@ -271,12 +279,14 @@ export default function PublicClientForm() {
                   name="phone"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="text-purple-700 font-medium">Número de telefone*</FormLabel>
+                        <FormLabel className="text-blue-700 font-medium">Número de telefone*</FormLabel>
                         <FormControl>
                           <Input
-                            placeholder="Número de telefone"
-                            className="border-gray-300 focus:border-purple-500 focus:ring-purple-500"
+                            placeholder="+55 (11) 99999-9999"
+                            className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                             {...field}
+                            value={field.value || ''}
+                            onChange={(e) => field.onChange(phoneApplyMask(e.target.value))}
                           />
                         </FormControl>
                         <FormMessage className="text-red-500 text-xs" />
@@ -289,13 +299,13 @@ export default function PublicClientForm() {
                   name="password"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-purple-700 font-medium">Senha*</FormLabel>
+                      <FormLabel className="text-blue-700 font-medium">Senha*</FormLabel>
                       <FormControl>
                         <div className="relative">
                           <Input
                             type={showPassword ? 'text' : 'password'}
                             placeholder="Digite sua senha"
-                            className="border-purple-200 focus:border-purple-500 focus:ring-purple-500 pr-10"
+                            className="border-blue-200 focus:border-blue-500 focus:ring-blue-500 pr-10"
                             {...field}
                           />
                           <button
@@ -304,9 +314,9 @@ export default function PublicClientForm() {
                             onClick={() => setShowPassword(!showPassword)}
                           >
                             {showPassword ? (
-                              <EyeOff className="h-4 w-4 text-purple-400" />
+                              <EyeOff className="h-4 w-4 text-blue-400" />
                             ) : (
-                              <Eye className="h-4 w-4 text-purple-400" />
+                              <Eye className="h-4 w-4 text-blue-400" />
                             )}
                           </button>
                         </div>
@@ -321,13 +331,13 @@ export default function PublicClientForm() {
                   name="confirmPassword"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-purple-700 font-medium">Confirmar senha*</FormLabel>
+                      <FormLabel className="text-blue-700 font-medium">Confirmar senha*</FormLabel>
                       <FormControl>
                         <div className="relative">
                           <Input
                             type={showConfirmPassword ? 'text' : 'password'}
                             placeholder="Confirme sua senha"
-                            className="border-gray-300 focus:border-purple-500 focus:ring-purple-500 pr-10"
+                            className="border-gray-300 focus:border-blue-500 focus:ring-blue-500 pr-10"
                             {...field}
                           />
                           <button
@@ -336,9 +346,9 @@ export default function PublicClientForm() {
                             onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                           >
                             {showConfirmPassword ? (
-                              <EyeOff className="h-4 w-4 text-gray-400" />
+                              <EyeOff className="h-4 w-4 text-blue-400" />
                             ) : (
-                              <Eye className="h-4 w-4 text-gray-400" />
+                              <Eye className="h-4 w-4 text-blue-400" />
                             )}
                           </button>
                         </div>
@@ -359,13 +369,13 @@ export default function PublicClientForm() {
                             <Checkbox
                               checked={field.value}
                               onCheckedChange={field.onChange}
-                              className="border-purple-300 data-[state=checked]:bg-purple-600 data-[state=checked]:border-purple-600"
+                              className="border-blue-300 data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600"
                             />
                           </FormControl>
                           <div className="space-y-1 leading-none">
-                            <FormLabel className="text-sm text-purple-600">
+                            <FormLabel className="text-sm text-blue-600">
                               Ao criar uma conta, você concorda com os{' '}
-                              <span onClick={() => window.open('https://yellowbc.seuclubedevantagens.com.br/tu/', '_blank')} className="text-purple-600 underline cursor-pointer">
+                              <span onClick={() => window.open('https://yellowbc.seuclubedevantagens.com.br/tu/', '_blank')} className="text-blue-600 underline cursor-pointer">
                                 Termos de Uso
                               </span>
                             </FormLabel>
@@ -384,13 +394,13 @@ export default function PublicClientForm() {
                             <Checkbox
                               checked={field.value}
                               onCheckedChange={field.onChange}
-                              className="border-gray-300 data-[state=checked]:bg-purple-600 data-[state=checked]:border-purple-600"
+                              className="border-gray-300 data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600"
                             />
                           </FormControl>
                           <div className="space-y-1 leading-none">
-                            <FormLabel className="text-sm text-gray-600">
+                            <FormLabel className="text-sm text-blue-600">
                               Ao criar uma conta, você concorda com a{' '}
-                              <span onClick={() => window.open('https://yellowyellowbc.clubedefidelidade.com/privacy_policy', '_blank')} className="text-purple-600 underline cursor-pointer">
+                              <span onClick={() => window.open('https://yellowyellowbc.clubedefidelidade.com/privacy_policy', '_blank')} className="text-blue-600 underline cursor-pointer">
                                 Política de Privacidade
                               </span>
                             </FormLabel>
@@ -404,13 +414,13 @@ export default function PublicClientForm() {
                 <Button
                   type="submit"
                   disabled={isSubmitting || tokenLoading || isRedirecting || !isTokenValid()}
-                  className="w-full bg-purple-700 hover:bg-purple-800 text-white font-medium py-3 rounded-lg mt-6"
+                  className="w-full bg-blue-700 hover:bg-blue-800 text-white font-medium py-3 rounded-lg mt-6"
                 >
                   {tokenLoading ? 'Carregando...' : isSubmitting ? 'Criando conta...' : isRedirecting ? 'Redirecionando...' : 'Criar Conta'}
                 </Button>
 
                 <div className="text-center mt-4">
-                  <Link to="/login" className="text-purple-600 text-sm underline hover:text-purple-800 font-medium">
+                  <Link to="/login" className="text-blue-600 text-sm underline hover:text-blue-800 font-medium">
                     Já tem uma conta? Fazer Login
                   </Link>
                 </div>

@@ -78,11 +78,13 @@ const isValidCNPJ = (cnpj: string): boolean => {
 
 /**
  * Validação de telefone
- * @param phone Telefone a ser validado
- * @returns true se o telefone for válido
+ * pt-BR: Aceita DDI; considera válido entre 10 e 15 dígitos (E.164).
+ * en-US: Accepts country code; valid between 10 and 15 digits (E.164).
  */
 const isValidPhone = (phone: string): boolean => {
-  return !phone || /^\(\d{2}\)\s\d{4,5}-\d{4}$/.test(phone);
+  if (!phone) return true;
+  const clean = phone.replace(/\D/g, '');
+  return clean.length >= 10 && clean.length <= 15;
 };
 
 /**

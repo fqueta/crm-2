@@ -660,12 +660,27 @@ export function ClientForm({
             <AccordionContent className="pb-6">
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4">
                 <div className="relative">
-                  <MaskedInputField
-                    name="config.celular"
+                  {/* Celular com máscara DDI */}
+                  {/* pt-BR: Aplica mascara com DDI utilizando phoneApplyMask */}
+                  {/* en-US: Applies DDI-aware mask using phoneApplyMask */}
+                  <FormField
                     control={form.control}
-                    label="Celular"
-                    mask="(dd) ddddd-dddd"
-                    placeholder="(00) 00000-0000"
+                    name="config.celular"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-sm font-medium text-gray-700">Celular</FormLabel>
+                        <FormControl>
+                          <Input
+                            {...field}
+                            value={field.value || ''}
+                            onChange={(e) => field.onChange(phoneApplyMask(e.target.value))}
+                            placeholder="+55 (11) 99999-9999"
+                            className="h-11"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
                   />
                   {form.watch('config.celular') && form.watch('config.celular').replace(/\D/g, '').length >= 10 && (
                     <div className="absolute right-3 top-9 flex items-center">
@@ -674,12 +689,27 @@ export function ClientForm({
                   )}
                 </div>
                 <div className="relative">
-                  <MaskedInputField
-                    name="config.telefone_residencial"
+                  {/* Telefone Residencial com máscara DDI */}
+                  {/* pt-BR: Aplica mascara com DDI utilizando phoneApplyMask */}
+                  {/* en-US: Applies DDI-aware mask using phoneApplyMask */}
+                  <FormField
                     control={form.control}
-                    label="Telefone Residencial"
-                    mask="(dd) dddd-dddd"
-                    placeholder="(00) 0000-0000"
+                    name="config.telefone_residencial"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-sm font-medium text-gray-700">Telefone Residencial</FormLabel>
+                        <FormControl>
+                          <Input
+                            {...field}
+                            value={field.value || ''}
+                            onChange={(e) => field.onChange(phoneApplyMask(e.target.value))}
+                            placeholder="+55 (11) 3333-4444"
+                            className="h-11"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
                   />
                   {form.watch('config.telefone_residencial') && form.watch('config.telefone_residencial').replace(/\D/g, '').length >= 10 && (
                     <div className="absolute right-3 top-9 flex items-center">

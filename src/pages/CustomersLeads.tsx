@@ -14,7 +14,9 @@ import { useUsersList } from '@/hooks/users';
 import { useAuth } from '@/contexts/AuthContext';
 import { FunnelRecord, StageRecord } from '@/types/pipelines';
 import { useClientsList, useUpdateClient } from '@/hooks/clients';
+import { useEnrollmentsList, useUpdateEnrollment } from '@/hooks/enrollments';
 import { ClientRecord } from '@/types/clients';
+import { EnrollmentRecord } from '@/types/enrollments';
 import { getMockClientsForStages } from '@/mocks/clients';
 import { clientsService } from '@/services/clientsService';
 import { CreateClientAttendanceInput } from '@/types/attendance';
@@ -76,6 +78,45 @@ const getClientAmountBRL = (client: ClientRecord): number => {
 };
 
 /**
+ * getEnrollmentAmountBRL
+ * pt-BR: Obtém um possível valor em BRL da matrícula (quando disponível).
+ * en-US: Extracts a possible BRL amount from enrollment data (when available).
+ */
+const getEnrollmentAmountBRL = (enroll: EnrollmentRecord): number => {
+  const p = (enroll as any).preferencias || {};
+  const c = (enroll as any).config || {};
+  /**
+   * normalizeToNumber
+   * pt-BR: Converte valores numéricos possivelmente em string (ex.: "17.820,00") para número.
+   * en-US: Converts possibly string numbers (e.g., "17.820,00") into a numeric value.
+   */
+  const normalizeToNumber = (v: any): number | undefined => {
+    if (v === undefined || v === null) return undefined;
+    if (typeof v === 'number' && !Number.isNaN(v)) return v;
+    if (typeof v === 'string') {
+      const s = v.replace(/\./g, '').replace(',', '.');
+      const n = parseFloat(s);
+      if (!Number.isNaN(n)) return n;
+    }
+    return undefined;
+  };
+
+  const rawCandidates = [
+    p?.pipeline?.amount_brl,
+    p?.pipeline?.valor_brl,
+    c?.amount_brl,
+    c?.valor_brl,
+    (enroll as any)?.amount_brl,
+    (enroll as any)?.subtotal,
+    (enroll as any)?.total,
+  ];
+  const hit = rawCandidates
+    .map((v) => normalizeToNumber(v))
+    .find((v) => typeof v === 'number' && !Number.isNaN(v));
+  return (hit as number) || 0;
+};
+
+/**
  * AtendimentoFunnelCard
  * pt-BR: Componente filho que exibe um card de funil de atendimento e suas etapas.
  *        Move o uso de hooks (useStagesList) para o nível superior do componente filho,
@@ -95,7 +136,14 @@ const getClientAmountBRL = (client: ClientRecord): number => {
  * pt-BR: Página para exibir funis e etapas da área de atendimento em /admin/customers/leads.
  * en-US: Page to display support-area funnels and stages at /admin/customers/leads.
  */
-export default function CustomersLeads() {
+/**
+ * CustomersLeads
+ * pt-BR: Página para exibir funis e etapas com filtro por área (atendimento ou vendas).
+ *        Por padrão, filtra funis da área de atendimento.
+ * en-US: Page to display funnels and stages filtered by area (support or sales).
+ *        Defaults to filtering support-area funnels.
+ */
+export default function CustomersLeads({ place = 'atendimento' }: { place?: 'vendas' | 'atendimento' }) {
   /**
    * useAuth
    * pt-BR: Obtém o usuário atual para definir o consultor padrão no modal.
@@ -110,14 +158,14 @@ export default function CustomersLeads() {
   const { toast } = useToast();
   /**
    * useFunnelsList
-   * pt-BR: Busca funis e filtra client-side pela área 'atendimento'.
-   * en-US: Fetch funnels and client-side filter by 'atendimento' area.
+   * pt-BR: Busca funis e filtra client-side pela área indicada (place).
+   * en-US: Fetch funnels and client-side filter by the provided area (place).
    */
   const { data: funnelsData, isLoading } = useFunnelsList({ page: 1, per_page: 50 });
   const funnels = useMemo(() => funnelsData?.data ?? [], [funnelsData?.data]);
-  const atendimentoFunnels = useMemo(() => (
-    funnels.filter(f => f.settings?.place === 'atendimento')
-  ), [funnels]);
+  const filteredFunnels = useMemo(() => (
+    funnels.filter((f) => f.settings?.place === place)
+  ), [funnels, place]);
 
   /**
    * selectedFunnelId
@@ -128,25 +176,25 @@ export default function CustomersLeads() {
   const initialFunnelFromUrl = useMemo(() => searchParams.get('funnel') || null, [searchParams]);
   const [selectedFunnelId, setSelectedFunnelId] = useState<string | null>(initialFunnelFromUrl);
   /**
-   * firstAtendimentoId
-   * pt-BR: Obtém o primeiro funil de atendimento e normaliza o ID para string
+   * firstFilteredId
+   * pt-BR: Obtém o primeiro funil da área selecionada e normaliza o ID para string
    *        para evitar mismatch de tipos com o componente Select.
-   * en-US: Gets the first support-area funnel and normalizes the ID to string
+   * en-US: Gets the first funnel of the selected area and normalizes the ID to string
    *        to avoid type mismatch with the Select component.
    */
-  const firstAtendimentoId = useMemo(() => {
-    const id = atendimentoFunnels[0]?.id;
+  const firstFilteredId = useMemo(() => {
+    const id = filteredFunnels[0]?.id;
     return id !== undefined && id !== null ? String(id) : null;
-  }, [atendimentoFunnels]);
+  }, [filteredFunnels]);
   useEffect(() => {
     /**
      * pt-BR: Define um funil padrão caso nenhum esteja selecionado ou na URL.
      * en-US: Sets a default funnel if none is selected or present in the URL.
      */
-    if (!selectedFunnelId && !initialFunnelFromUrl && firstAtendimentoId) {
-      setSelectedFunnelId(firstAtendimentoId);
+    if (!selectedFunnelId && !initialFunnelFromUrl && firstFilteredId) {
+      setSelectedFunnelId(firstFilteredId);
     }
-  }, [selectedFunnelId, initialFunnelFromUrl, firstAtendimentoId]);
+  }, [selectedFunnelId, initialFunnelFromUrl, firstFilteredId]);
 
   useEffect(() => {
     /**
@@ -261,6 +309,51 @@ export default function CustomersLeads() {
   }, [allClients]);
 
   /**
+   * situacaoForFunnel
+   * pt-BR: Determina o filtro `situacao` das matrículas conforme o funil selecionado.
+   *        - Funil 2: interessados (`situacao = "int"`)
+   *        - Funil 3: matriculados (`situacao = "mat"`)
+   *        - Outros: sem filtro específico
+   * en-US: Determines enrollment `situacao` filter based on selected funnel.
+   *        - Funnel 2: interested (`situacao = "int"`)
+   *        - Funnel 3: enrolled (`situacao = "mat"`)
+   *        - Others: no specific filter
+   */
+  const situacaoForFunnel = useMemo(() => {
+    if (!selectedFunnelId) return undefined as any;
+    const fid = String(selectedFunnelId);
+    if (fid === '2') return 'int';
+    if (fid === '3') return 'mat';
+    return undefined as any;
+  }, [selectedFunnelId]);
+
+  /**
+   * enrollmentListParams
+   * pt-BR: Parâmetros de listagem de matrículas, incluindo `situacao` quando aplicável.
+   * en-US: Enrollment listing params, including `situacao` when applicable.
+   */
+  const enrollmentListParams = useMemo(() => ({
+    page: 1,
+    per_page: 100,
+    ...(situacaoForFunnel ? { situacao: situacaoForFunnel } : {}),
+  }), [situacaoForFunnel]);
+
+  /**
+   * useEnrollmentsList
+   * pt-BR: Carrega lista de matrículas com filtro dinâmico pela área de vendas.
+   * en-US: Loads enrollments list with dynamic filter for sales area.
+   */
+  const { data: enrollmentsData } = useEnrollmentsList(enrollmentListParams, { enabled: place === 'vendas' && !!selectedFunnelId });
+  const updateEnrollmentMutation = useUpdateEnrollment();
+  const allEnrollments = useMemo<EnrollmentRecord[]>(() => (
+    Array.isArray(enrollmentsData?.data) ? (enrollmentsData!.data as EnrollmentRecord[]) : []
+  ), [enrollmentsData?.data]);
+  const [localEnrollments, setLocalEnrollments] = useState<EnrollmentRecord[]>([]);
+  useEffect(() => {
+    if (place === 'vendas') setLocalEnrollments(allEnrollments);
+  }, [place, allEnrollments]);
+
+  /**
    * loadLastAttendanceFromStorage
    * pt-BR: Carrega do localStorage o último atendimento por cliente e
    *        atualiza o mapa em memória para exibição nos cards.
@@ -361,6 +454,52 @@ export default function CustomersLeads() {
     }
     return null;
   };
+
+  /**
+   * extractEnrollmentFunnelId
+   * pt-BR: Detecta funil associado à matrícula.
+   * en-US: Detects associated funnel for an enrollment.
+   */
+  const extractEnrollmentFunnelId = (enroll: EnrollmentRecord): string | null => {
+    const p: any = (enroll as any).preferencias || {};
+    const cfg: any = (enroll as any).config || {};
+    const candidates = [
+      (enroll as any)?.funnel_id,
+      (enroll as any)?.funnelId,
+      cfg?.funnelId,
+      p?.pipeline?.funnelId,
+      p?.funnelId,
+    ];
+    for (const v of candidates) {
+      if (v === undefined || v === null) continue;
+      const s = String(v).trim();
+      if (s.length > 0) return s;
+    }
+    return null;
+  };
+
+  /**
+   * extractEnrollmentStageId
+   * pt-BR: Detecta etapa associada à matrícula.
+   * en-US: Detects associated stage for an enrollment.
+   */
+  const extractEnrollmentStageId = (enroll: EnrollmentRecord): string | null => {
+    const p: any = (enroll as any).preferencias || {};
+    const cfg: any = (enroll as any).config || {};
+    const candidates = [
+      (enroll as any)?.stage_id,
+      (enroll as any)?.stageId,
+      cfg?.stage_id,
+      p?.pipeline?.stage_id,
+      p?.stage_id,
+    ];
+    for (const v of candidates) {
+      if (v === undefined || v === null) continue;
+      const s = String(v).trim();
+      if (s.length > 0) return s;
+    }
+    return null;
+  };
   // console.log('extractStageId', allClients.map(extractStageId));
   
   /**
@@ -403,6 +542,28 @@ export default function CustomersLeads() {
   }, [localClients, stages, selectedFunnelId]);
 
   /**
+   * enrollmentsByStage
+   * pt-BR: Agrupa matrículas por `stage_id` no funil selecionado (somente vendas).
+   * en-US: Groups enrollments by `stage_id` within selected funnel (sales only).
+   */
+  const enrollmentsByStage = useMemo(() => {
+    const allowedStageIds = new Set(stages.map((s) => String(s.id)));
+    const map = new Map<string, EnrollmentRecord[]>();
+    for (const enroll of localEnrollments) {
+      const fid = String(extractEnrollmentFunnelId(enroll) || '');
+      if (selectedFunnelId) {
+        if (!fid || fid !== String(selectedFunnelId)) continue;
+      }
+      const sid = String(extractEnrollmentStageId(enroll) || '');
+      if (!sid) continue;
+      if (!allowedStageIds.has(sid)) continue;
+      if (!map.has(sid)) map.set(sid, []);
+      map.get(sid)!.push(enroll);
+    }
+    return map;
+  }, [localEnrollments, stages, selectedFunnelId]);
+
+  /**
    * summary
    * pt-BR: Resumo sempre visível com funil selecionado, contagem total de clientes,
    *        contagem visível no Kanban e IDs de etapas do funil atual.
@@ -411,18 +572,18 @@ export default function CustomersLeads() {
    */
   const summary = useMemo(() => {
     const stageIds = stages.map((s) => String(s.id));
-    const totalClients = localClients.length;
-    // Corrige contagem visível usando valores do Map
-    const visibleTotal = clientsByStage instanceof Map
-      ? Array.from(clientsByStage.values()).reduce((acc, arr) => acc + (arr?.length || 0), 0)
+    const total = place === 'vendas' ? localEnrollments.length : localClients.length;
+    const visibleMap = place === 'vendas' ? enrollmentsByStage : clientsByStage;
+    const visibleTotal = visibleMap instanceof Map
+      ? Array.from(visibleMap.values()).reduce((acc, arr) => acc + (arr?.length || 0), 0)
       : 0;
     return {
       selectedFunnelId: selectedFunnelId ? String(selectedFunnelId) : '(nenhum)',
       stageIds,
-      totalClients,
+      totalClients: total,
       visibleTotal,
     };
-  }, [stages, localClients, clientsByStage, selectedFunnelId]);
+  }, [stages, localClients, localEnrollments, clientsByStage, enrollmentsByStage, selectedFunnelId, place]);
 
   /**
    * stageTotals
@@ -431,12 +592,16 @@ export default function CustomersLeads() {
    */
   const stageTotals = useMemo(() => {
     return stages.map((s) => {
-      const arr = clientsByStage.get(String(s.id)) || [];
+      const arr = place === 'vendas'
+        ? (enrollmentsByStage.get(String(s.id)) || [])
+        : (clientsByStage.get(String(s.id)) || []);
       const count = arr.length;
-      const amount = arr.reduce((sum, c) => sum + getClientAmountBRL(c), 0);
+      const amount = place === 'vendas'
+        ? (arr as EnrollmentRecord[]).reduce((sum, e) => sum + getEnrollmentAmountBRL(e), 0)
+        : (arr as ClientRecord[]).reduce((sum, c) => sum + getClientAmountBRL(c), 0);
       return { id: String(s.id), name: s.name, count, amountBRL: formatBRL(amount) };
     });
-  }, [stages, clientsByStage]);
+  }, [stages, clientsByStage, enrollmentsByStage, place]);
 
   /**
    * diagnostics
@@ -503,6 +668,13 @@ export default function CustomersLeads() {
   const [dragging, setDragging] = useState<{ clientId: string | null; fromStageId: string | null }>({ clientId: null, fromStageId: null });
   const [dropTargetStageId, setDropTargetStageId] = useState<string | null>(null);
   const [recentlyMovedId, setRecentlyMovedId] = useState<string | null>(null);
+  /**
+   * draggingEnrollment
+   * pt-BR: Controle de arraste específico para matrículas (área de vendas).
+   * en-US: Drag control specific to enrollments (sales area).
+   */
+  const [draggingEnrollment, setDraggingEnrollment] = useState<{ enrollmentId: string | null; fromStageId: string | null }>({ enrollmentId: null, fromStageId: null });
+  const [recentlyMovedEnrollmentId, setRecentlyMovedEnrollmentId] = useState<string | null>(null);
 
   /**
    * attendanceDialog state
@@ -529,13 +701,15 @@ export default function CustomersLeads() {
   const [addLeadStageId, setAddLeadStageId] = useState<string>('');
   const [addLeadName, setAddLeadName] = useState<string>('');
   const [addLeadEmail, setAddLeadEmail] = useState<string>('');
+  const [addLeadEmailError, setAddLeadEmailError] = useState<string | null>(null);
   const [addLeadPhone, setAddLeadPhone] = useState<string>('');
-  const [addLeadPhoneDDI, setAddLeadPhoneDDI] = useState<string>('+55');
   const [addLeadConsultantId, setAddLeadConsultantId] = useState<string>('');
   // Estados de validação
   const isNameInvalid = useMemo(() => (addLeadName.trim().length === 0), [addLeadName]);
-  const isPhoneInvalid = useMemo(() => (phoneRemoveMask(addLeadPhone).length < 10), [addLeadPhone]);
-  const isDDIInvalid = useMemo(() => !/^\+\d{1,3}$/.test(addLeadPhoneDDI.trim()), [addLeadPhoneDDI]);
+  const isPhoneInvalid = useMemo(() => {
+    const len = phoneRemoveMask(addLeadPhone).length;
+    return len < 10 || len > 15;
+  }, [addLeadPhone]);
   // Busca dinâmica para consultores
   const [consultantSearchTerm, setConsultantSearchTerm] = useState<string>('');
 
@@ -555,6 +729,38 @@ export default function CustomersLeads() {
     return list;
   }, [consultantOptions, addLeadConsultantId, user]);
   const consultantComboboxOptions = useComboboxOptions(mergedConsultants, 'id', 'name');
+
+  /**
+   * handleLeadCreationError
+   * pt-BR: Trata erros da API ao criar lead, destacando validações de campo
+   *        como e-mail já utilizado.
+   * en-US: Handles API errors when creating a lead, highlighting field
+   *        validations such as email already used.
+   */
+  const handleLeadCreationError = (err: any) => {
+    try {
+      const body = err?.body || {};
+      const message = body?.message || String(err?.message || 'Erro ao criar lead');
+      const errors = body?.errors || {};
+
+      // Limpa erros anteriores
+      setAddLeadEmailError(null);
+
+      // Validação específica: e-mail já utilizado
+      const emailErrors: string[] = Array.isArray(errors?.email) ? errors.email : [];
+      if (emailErrors.length > 0) {
+        const msg = emailErrors[0];
+        setAddLeadEmailError(msg);
+        toast({ title: 'Erro de validação', description: msg, variant: 'destructive' });
+        return;
+      }
+
+      // Fallback genérico
+      toast({ title: message, description: 'Verifique os campos e tente novamente.', variant: 'destructive' });
+    } catch {
+      toast({ title: 'Erro ao criar lead', description: 'Falha inesperada ao processar erro.', variant: 'destructive' });
+    }
+  };
 
   /**
    * lastAttendanceByClient
@@ -581,6 +787,78 @@ export default function CustomersLeads() {
   const onCardDragEnd = () => {
     setDragging({ clientId: null, fromStageId: null });
     setDropTargetStageId(null);
+  };
+
+  /**
+   * onEnrollmentDragStart
+   * pt-BR: Inicia o arraste de um card de matrícula, registrando a etapa de origem.
+   * en-US: Starts dragging an enrollment card, recording the source stage.
+   */
+  const onEnrollmentDragStart = (enroll: EnrollmentRecord) => {
+    const fromId = extractEnrollmentStageId(enroll);
+    setDraggingEnrollment({ enrollmentId: String(enroll.id), fromStageId: fromId });
+  };
+
+  /**
+   * onEnrollmentDragEnd
+   * pt-BR: Finaliza arraste da matrícula e limpa alvo de drop.
+   * en-US: Ends enrollment drag and clears drop target.
+   */
+  const onEnrollmentDragEnd = () => {
+    setDraggingEnrollment({ enrollmentId: null, fromStageId: null });
+    setDropTargetStageId(null);
+  };
+
+  /**
+   * onDropEnrollmentOnStage
+   * pt-BR: Solta uma matrícula em uma etapa; aplica atualização otimista e persiste via API.
+   * en-US: Drops an enrollment on a stage; applies optimistic update and persists via API.
+   */
+  const onDropEnrollmentOnStage = (toStageId: string) => {
+    if (!draggingEnrollment.enrollmentId) return;
+    const idx = localEnrollments.findIndex((e) => String(e.id) === String(draggingEnrollment.enrollmentId));
+    if (idx < 0) return;
+    const base = localEnrollments[idx];
+    const currentStageId = String(extractEnrollmentStageId(base) || '');
+    if (currentStageId === String(toStageId)) {
+      onEnrollmentDragEnd();
+      return;
+    }
+
+    const next: EnrollmentRecord = {
+      ...base,
+      // Atualiza campos de conveniência no topo e dentro de config, mantendo funil
+      funnel_id: selectedFunnelId || (base as any)?.funnel_id || (base as any)?.funnelId || null as any,
+      stage_id: toStageId as any,
+      config: {
+        ...(base as any).config,
+        funnelId: selectedFunnelId || (base as any)?.config?.funnelId || null,
+        stage_id: toStageId as any,
+      } as any,
+    };
+    setLocalEnrollments((prev) => {
+      const copy = [...prev];
+      copy[idx] = next;
+      return copy;
+    });
+    setRecentlyMovedEnrollmentId(String(base.id));
+
+    // Persistência via API; em caso de erro, reverte estado local
+    updateEnrollmentMutation.mutate({ id: String(base.id), data: { funnel_id: selectedFunnelId, stage_id: toStageId } as any }, {
+      onSuccess: () => {
+        setTimeout(() => setRecentlyMovedEnrollmentId(null), 400);
+      },
+      onError: () => {
+        setLocalEnrollments((prev) => {
+          const copy = [...prev];
+          copy[idx] = base;
+          return copy;
+        });
+        setRecentlyMovedEnrollmentId(null);
+      },
+    });
+
+    onEnrollmentDragEnd();
   };
 
   /**
@@ -749,23 +1027,23 @@ export default function CustomersLeads() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Layers className="h-5 w-5" /> Leads de Atendimento
+            <Layers className="h-5 w-5" /> {place === 'vendas' ? 'Funis de Vendas' : 'Leads de Atendimento'}
           </CardTitle>
           <CardDescription>
-            Funis e etapas da área de atendimento, para acompanhamento de leads.
+            {`Funis e etapas da área de ${place === 'vendas' ? 'vendas' : 'atendimento'}, para acompanhamento.`}
           </CardDescription>
         </CardHeader>
         <CardContent>
           {/* Controls: selecionar funil de atendimento */}
           <div className="flex items-center gap-3 mb-4 w-full max-w-xs">
             <div className="w-full max-w-xs">
-              <label className="text-xs text-muted-foreground">Funil de Atendimento</label>
+              <label className="text-xs text-muted-foreground">{place === 'vendas' ? 'Funil de Vendas' : 'Funil de Atendimento'}</label>
               <Select value={selectedFunnelId ?? undefined} onValueChange={setSelectedFunnelId}>
                 <SelectTrigger>
                   <SelectValue placeholder="Selecione um funil" />
                 </SelectTrigger>
                 <SelectContent>
-                  {atendimentoFunnels.map(f => (
+                  {filteredFunnels.map(f => (
                     <SelectItem key={f.id} value={String(f.id)}>{f.name}</SelectItem>
                   ))}
                 </SelectContent>
@@ -873,8 +1151,8 @@ export default function CustomersLeads() {
 
           {/* Estados de carregamento/empty */}
           {isLoading && <p className="text-sm text-muted-foreground">Carregando funis...</p>}
-          {!isLoading && atendimentoFunnels.length === 0 && (
-            <p className="text-sm text-muted-foreground">Nenhum funil de atendimento encontrado.</p>
+          {!isLoading && filteredFunnels.length === 0 && (
+            <p className="text-sm text-muted-foreground">{`Nenhum funil de ${place === 'vendas' ? 'vendas' : 'atendimento'} encontrado.`}</p>
           )}
 
           {!!selectedFunnelId && (
@@ -890,38 +1168,54 @@ export default function CustomersLeads() {
                   <div className="col-span-full p-4 text-sm text-muted-foreground">Nenhuma etapa cadastrada neste funil.</div>
                 ) : (
                   stages.map((stage) => (
-                  <StageColumn
-                    key={stage.id}
-                    stage={stage}
-                    funnelId={selectedFunnelId!}
-                    funnelColor={selectedFunnelColor}
-                    dense={dense}
-                     clients={clientsByStage.get(String(stage.id)) || []}
-                     onDropOnStage={onDropOnStage}
-                     onDragStart={onCardDragStart}
-                     onDragEnd={onCardDragEnd}
-                     onRegisterAttendance={openAttendanceDialog}
-                     onAddLeadClick={(fId, sId) => {
-                       /**
-                        * handleOpenAddLeadDialog
-                        * pt-BR: Abre modal de novo lead com funil/etapa e consultor padrão.
-                        * en-US: Opens new lead modal with funnel/stage and default consultant.
-                        */
-                       setAddLeadFunnelId(String(fId));
-                       setAddLeadStageId(String(sId));
-                       setAddLeadName('');
-                       setAddLeadEmail('');
-                       setAddLeadPhone('');
-                       // Define usuário atual como consultor padrão, se disponível
-                       setAddLeadConsultantId(user?.id ? String(user.id) : '');
-                       setAddLeadPhoneDDI('+55');
-                       setAddLeadDialogOpen(true);
-                     }}
-                     dropActive={dropTargetStageId === stage.id}
-                     setDropTargetStageId={setDropTargetStageId}
-                     recentlyMovedId={recentlyMovedId}
-                    lastAttendanceByClient={lastAttendanceByClient}
-                    />
+                    place === 'vendas' ? (
+                      <StageColumnSales
+                        key={stage.id}
+                        stage={stage}
+                        funnelId={selectedFunnelId!}
+                        funnelColor={selectedFunnelColor}
+                        dense={dense}
+                        enrollments={enrollmentsByStage.get(String(stage.id)) || []}
+                        dropActive={dropTargetStageId === stage.id}
+                        setDropTargetStageId={setDropTargetStageId}
+                        onDragStart={onEnrollmentDragStart}
+                        onDragEnd={onEnrollmentDragEnd}
+                        onDropEnrollmentOnStage={onDropEnrollmentOnStage}
+                        recentlyMovedEnrollmentId={recentlyMovedEnrollmentId}
+                      />
+                    ) : (
+                      <StageColumn
+                        key={stage.id}
+                        stage={stage}
+                        funnelId={selectedFunnelId!}
+                        funnelColor={selectedFunnelColor}
+                        dense={dense}
+                        clients={clientsByStage.get(String(stage.id)) || []}
+                        onDropOnStage={onDropOnStage}
+                        onDragStart={onCardDragStart}
+                        onDragEnd={onCardDragEnd}
+                        onRegisterAttendance={openAttendanceDialog}
+                        onAddLeadClick={(fId, sId) => {
+                          /**
+                           * handleOpenAddLeadDialog
+                           * pt-BR: Abre modal de novo lead com funil/etapa e consultor padrão.
+                           * en-US: Opens new lead modal with funnel/stage and default consultant.
+                           */
+                          setAddLeadFunnelId(String(fId));
+                          setAddLeadStageId(String(sId));
+                          setAddLeadName('');
+                          setAddLeadEmail('');
+                          setAddLeadEmailError(null);
+                          setAddLeadPhone('');
+                          setAddLeadConsultantId(user?.id ? String(user.id) : '');
+                          setAddLeadDialogOpen(true);
+                        }}
+                        dropActive={dropTargetStageId === stage.id}
+                        setDropTargetStageId={setDropTargetStageId}
+                        recentlyMovedId={recentlyMovedId}
+                        lastAttendanceByClient={lastAttendanceByClient}
+                      />
+                    )
                   ))
                 )}
               </div>
@@ -1025,7 +1319,17 @@ export default function CustomersLeads() {
                     </div>
                     <div>
                       <label className="text-xs">Email</label>
-                      <input type="email" className="w-full rounded-md border p-2 text-sm" value={addLeadEmail} onChange={(e) => setAddLeadEmail(e.target.value)} placeholder="email@exemplo.com" />
+                      <input
+                        type="email"
+                        className={`w-full rounded-md border p-2 text-sm ${addLeadEmailError ? 'border-destructive' : ''}`}
+                        value={addLeadEmail}
+                        onChange={(e) => { setAddLeadEmail(e.target.value); setAddLeadEmailError(null); }}
+                        placeholder="email@exemplo.com"
+                        aria-invalid={!!addLeadEmailError}
+                      />
+                      {addLeadEmailError && (
+                        <p className="text-xs text-destructive mt-1">{addLeadEmailError}</p>
+                      )}
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-3">
@@ -1035,25 +1339,12 @@ export default function CustomersLeads() {
                         className={`w-full rounded-md border p-2 text-sm ${isPhoneInvalid ? 'border-destructive' : ''}`}
                         value={addLeadPhone}
                         onChange={(e) => setAddLeadPhone(phoneApplyMask(e.target.value))}
-                        placeholder="(11) 99999-9999"
+                        placeholder="+55 (11) 99999-9999"
                         aria-invalid={isPhoneInvalid}
                       />
                       {isPhoneInvalid && (
                         <p className="text-xs text-destructive mt-1">Telefone inválido</p>
                       )}
-                      <div className="mt-2">
-                        <label className="text-xs">DDI</label>
-                        <input
-                          className={`w-full rounded-md border p-2 text-sm ${isDDIInvalid ? 'border-destructive' : ''}`}
-                          value={addLeadPhoneDDI}
-                          onChange={(e) => setAddLeadPhoneDDI(e.target.value)}
-                          placeholder="+55"
-                          aria-invalid={isDDIInvalid}
-                        />
-                        {isDDIInvalid && (
-                          <p className="text-xs text-destructive mt-1">DDI inválido (ex.: +55)</p>
-                        )}
-                      </div>
                     </div>
                     <div>
                       <label className="text-xs">Consultor</label>
@@ -1078,8 +1369,8 @@ export default function CustomersLeads() {
                   <Button variant="outline" onClick={() => setAddLeadDialogOpen(false)}>Cancelar</Button>
                   <Button onClick={async () => {
                     // Validação simples antes de enviar
-                    if (isNameInvalid || isPhoneInvalid || isDDIInvalid) {
-                      toast({ title: 'Campos obrigatórios', description: 'Preencha nome, DDI e telefone válidos.', variant: 'destructive' });
+                    if (isNameInvalid || isPhoneInvalid) {
+                      toast({ title: 'Campos obrigatórios', description: 'Preencha nome e telefone válidos.', variant: 'destructive' });
                       return;
                     }
                     // submitAddLead
@@ -1093,10 +1384,10 @@ export default function CustomersLeads() {
                         autor: addLeadConsultantId || undefined,
                         config: {
                           bairro: '', celular: '', cep: '', cidade: '', complemento: '', endereco: '', escolaridade: '', nascimento: '', nome_fantasia: '', numero: '', observacoes: '',
-                          stage_id: addLeadStageId || '', funnelId: addLeadFunnelId || '', profissao: '', rg: '', telefone_residencial: '', tipo_pj: '', uf: ''
+                         stage_id: addLeadStageId || '', funnelId: addLeadFunnelId || '', profissao: '', rg: '', telefone_residencial: '', tipo_pj: '', uf: ''
                         },
                          email: addLeadEmail || '',
-                        telefone: `${addLeadPhoneDDI} ${phoneApplyMask(phoneRemoveMask(addLeadPhone))}` || '',
+                        telefone: phoneRemoveMask(addLeadPhone) || '',
                          genero: 'ni',
                          name: addLeadName || '',
                          password: 'ferqueta',
@@ -1110,7 +1401,8 @@ export default function CustomersLeads() {
                       setAddLeadName(''); setAddLeadEmail(''); setAddLeadPhone(''); setAddLeadConsultantId('');
                       toast({ title: 'Lead criado', description: `Cliente ${created.name} adicionado em ${addLeadStageId}.` });
                     } catch (e: any) {
-                      toast({ title: 'Erro ao criar lead', description: String(e?.message || 'Verifique a conexão com a API'), variant: 'destructive' });
+                      // Trata erros de validação (ex.: email já utilizado) e outras falhas da API
+                      handleLeadCreationError(e);
                     }
                   }}>Criar</Button>
                 </div>
@@ -1323,6 +1615,19 @@ function ClientKanbanCard({ client, funnelId, onDragStart, onDragEnd, onRegister
     navigate(`/admin/clients/${client.id}/view${q}`, { state: { from: location } });
   };
 
+  /**
+   * handleCreateProposal
+   * pt-BR: Navega para a página de criação de proposta, enviando `id_cliente` via
+   *        query string e associando o botão Voltar à página atual de leads.
+   * en-US: Navigates to the proposal creation page, sending `id_cliente` via
+   *        query string and associating the Back button to the current leads page.
+   */
+  function handleCreateProposal() {
+    const returnTo = `${location.pathname}${location.search}`;
+    const qs = new URLSearchParams({ id_cliente: String(client.id) });
+    navigate(`/admin/sales/proposals/create?${qs.toString()}`, { state: { returnTo, funnelId } });
+  }
+
   const statusLabel = (() => {
     const map: Record<string, string> = {
       actived: 'Ativo',
@@ -1378,7 +1683,7 @@ function ClientKanbanCard({ client, funnelId, onDragStart, onDragEnd, onRegister
               <DropdownMenuItem onClick={(e) => { e.stopPropagation(); toast({ title: 'Conversas', description: 'Em breve: histórico de conversas do cliente.' }); }}>
                 <MessageSquare className="mr-2 h-4 w-4" /> Conversas
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={(e) => { e.stopPropagation(); toast({ title: 'Propostas', description: 'Em breve: propostas vinculadas ao cliente.' }); }}>
+              <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleCreateProposal(); }}>
                 <FileText className="mr-2 h-4 w-4" /> Propostas
               </DropdownMenuItem>
             </DropdownMenuContent>
@@ -1402,6 +1707,193 @@ function ClientKanbanCard({ client, funnelId, onDragStart, onDragEnd, onRegister
         >
           <NotebookPen className="h-4 w-4 mr-1" /> Registrar
         </Button>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * EnrollmentKanbanCard
+ * pt-BR: Card simples de matrícula para a área de vendas.
+ * en-US: Simple enrollment card for the sales area.
+ */
+/**
+ * EnrollmentKanbanCard
+ * pt-BR: Card de matrícula com ações de visualizar/editar e contexto de funil.
+ * en-US: Enrollment card with view/edit actions and funnel context.
+ */
+function EnrollmentKanbanCard({ enrollment, dense, funnelId, onDragStart, onDragEnd, isRecentlyMoved }: { enrollment: EnrollmentRecord; dense?: boolean; funnelId?: string; onDragStart?: () => void; onDragEnd?: () => void; isRecentlyMoved?: boolean }) {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const returnTo = `${location.pathname}${location.search}`;
+
+  const title = (enrollment as any)?.cliente_nome || (enrollment as any)?.student_name || (enrollment as any)?.name || `Matrícula ${enrollment.id}`;
+  const course = (enrollment as any)?.curso_nome || (enrollment as any)?.course_name || (enrollment as any)?.curso || '';
+  const turma = (enrollment as any)?.turma_nome || '';
+  const status = (enrollment as any)?.status || '—';
+  const amountBRL = formatBRL(getEnrollmentAmountBRL(enrollment));
+
+  /**
+   * goToView
+   * pt-BR: Navega para visualizar proposta/matrícula mantendo contexto de funil.
+   * en-US: Navigates to view proposal/enrollment while keeping funnel context.
+   */
+  const goToView = () => {
+    const q = funnelId ? `?funnel=${encodeURIComponent(String(funnelId))}` : '';
+    navigate(`/admin/sales/proposals/view/${encodeURIComponent(String(enrollment.id))}${q}`, { state: { returnTo } });
+  };
+  /**
+   * goToEdit
+   * pt-BR: Navega para editar proposta/matrícula mantendo contexto de funil.
+   * en-US: Navigates to edit proposal/enrollment while keeping funnel context.
+   */
+  const goToEdit = () => {
+    const q = funnelId ? `?funnel=${encodeURIComponent(String(funnelId))}` : '';
+    navigate(`/admin/sales/proposals/edit/${encodeURIComponent(String(enrollment.id))}${q}`, { state: { returnTo } });
+  };
+
+  return (
+    <div
+      className={`rounded-md border bg-card transition-all ${dense ? 'p-2' : 'p-3'} shadow-sm hover:bg-muted/50 cursor-pointer ${isRecentlyMoved ? 'animate-[fadeIn_0.3s_ease-in] shadow-md' : ''}`}
+      onClick={goToView}
+      title={`Visualizar matrícula ${enrollment.id}`}
+      draggable
+      onDragStart={onDragStart}
+      onDragEnd={onDragEnd}
+    >
+      <div className="flex items-center justify-between">
+        <div className="font-medium text-sm truncate" title={title}>{title}</div>
+        <div className="flex items-center gap-1">
+          <Badge variant="outline" className="text-xs">{status}</Badge>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="flex h-7 w-7 items-center justify-center rounded-md border hover:bg-muted" onClick={(e) => e.stopPropagation()} title="Ações">
+                <MoreHorizontal className="h-4 w-4" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+              <DropdownMenuItem onClick={goToView}>
+                <Eye className="mr-2 h-4 w-4" /> Visualizar
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={goToEdit}>
+                <FileText className="mr-2 h-4 w-4" /> Editar
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </div>
+      <div className="text-xs text-muted-foreground truncate mt-1" title={course}>{course || 'Curso não informado'}</div>
+      {turma && (
+        <div className="text-[11px] text-muted-foreground truncate mt-1" title={turma}>{turma}</div>
+      )}
+      <div className="text-xs text-muted-foreground mt-1">{amountBRL}</div>
+    </div>
+  );
+}
+
+/**
+ * StageColumnSales
+ * pt-BR: Coluna do kanban para uma etapa do funil de vendas (matrículas).
+ * en-US: Kanban column for a sales funnel stage (enrollments).
+ */
+function StageColumnSales({
+  stage,
+  funnelId,
+  funnelColor,
+  enrollments,
+  dense,
+  dropActive,
+  setDropTargetStageId,
+  onDragStart,
+  onDragEnd,
+  onDropEnrollmentOnStage,
+  recentlyMovedEnrollmentId,
+}: {
+  stage: StageRecord;
+  funnelId: string;
+  funnelColor?: string | undefined;
+  enrollments: EnrollmentRecord[];
+  dense: boolean;
+  dropActive: boolean;
+  setDropTargetStageId: (id: string | null) => void;
+  onDragStart: (enrollment: EnrollmentRecord) => void;
+  onDragEnd: () => void;
+  onDropEnrollmentOnStage: (toStageId: string) => void;
+  recentlyMovedEnrollmentId?: string | null;
+}) {
+  // useNavigate/useLocation para permitir abrir criação de propostas e retornar ao funil
+  // pt-BR: Navega para a página de criação de propostas, carregando o estado atual para voltar.
+  // en-US: Navigates to the proposal creation page, carrying current location to enable going back.
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  const stageColor = stage.color || funnelColor || '#CBD5E1';
+  const totalCards = enrollments.length;
+  const totalAmount = enrollments.reduce((sum, e) => sum + getEnrollmentAmountBRL(e), 0);
+  const totalAmountBRL = formatBRL(totalAmount);
+
+  /**
+   * handleAddProposal
+   * pt-BR: Abre a página de criação de propostas e passa IDs de funil e etapa
+   *        para permitir preencher os campos correspondentes e voltar ao funil atual.
+   * en-US: Opens the proposal creation page and passes funnel and stage IDs
+   *        so the form fields are prefilled and enables returning to current funnel.
+   */
+  function handleAddProposal() {
+    const returnTo = `${location.pathname}${location.search}`;
+    navigate('/admin/sales/proposals/create', {
+      state: { returnTo, funnelId, stageId: String(stage.id) },
+    });
+  }
+
+  return (
+    <div
+      className={`flex flex-col rounded-md border bg-background ${dropActive ? 'ring-2 ring-primary/50 bg-muted/20' : ''}`}
+      onDragOver={(e) => { e.preventDefault(); setDropTargetStageId(stage.id); }}
+      onDragLeave={() => setDropTargetStageId(null)}
+      onDrop={() => onDropEnrollmentOnStage(String(stage.id))}
+    >
+      <div className="sticky top-0 z-10 bg-background">
+        <div className="h-1 w-full rounded-t-md" style={{ backgroundColor: stageColor }} />
+        <div className="flex items-center justify-between p-3 border-b" style={{ borderBottomColor: '#E5E7EB' }}>
+          <div className="flex items-center gap-2">
+            <span className="inline-block h-3 w-3 rounded-sm" style={{ backgroundColor: stageColor }} />
+            <span className="font-medium text-sm">{stage.name}</span>
+            <Badge variant="secondary">{totalCards}</Badge>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground">{totalAmountBRL}</span>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm" className="h-7 px-2">
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-40">
+                <DropdownMenuItem onClick={handleAddProposal}>
+                  <Plus className="h-4 w-4 mr-2" /> Adicionar propostas
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </div>
+      </div>
+      <div className={`p-3 min-h-[360px] max-h-[70vh] overflow-y-auto ${dense ? 'space-y-1.5' : 'space-y-2'}`}>
+        {enrollments.length === 0 ? (
+          <div className="text-xs text-muted-foreground rounded-md border border-dashed p-3">Nenhuma matrícula nesta etapa.</div>
+        ) : (
+          enrollments.map((e) => (
+            <EnrollmentKanbanCard
+              key={String(e.id)}
+              enrollment={e}
+              dense={dense}
+              funnelId={funnelId}
+              onDragStart={() => onDragStart(e)}
+              onDragEnd={onDragEnd}
+              isRecentlyMoved={recentlyMovedEnrollmentId === String(e.id)}
+            />
+          ))
+        )}
       </div>
     </div>
   );

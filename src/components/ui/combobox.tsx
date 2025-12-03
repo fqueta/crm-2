@@ -20,6 +20,11 @@ import {
 export interface ComboboxOption {
   value: string
   label: string
+  /**
+   * Descrição opcional exibida abaixo do label
+   * Optional secondary text shown under the label
+   */
+  description?: string
   disabled?: boolean
 }
 
@@ -35,6 +40,11 @@ interface ComboboxProps {
   loading?: boolean
   onSearch?: (searchTerm: string) => void
   searchTerm?: string
+  /**
+   * Tempo de debounce em ms para a busca (default: 250ms)
+   * Debounce time in ms for search (default: 250ms)
+   */
+  debounceMs?: number
 }
 
 /**
@@ -53,11 +63,22 @@ export function Combobox({
   loading = false,
   onSearch,
   searchTerm,
+  debounceMs = 250,
 }: ComboboxProps) {
   const [open, setOpen] = React.useState(false)
   const [searchValue, setSearchValue] = React.useState(searchTerm || "")
 
   const selectedOption = options.find((option) => option.value === value)
+
+  /**
+   * Efeito de debounce para disparar busca remota suavemente
+   * Debounced effect to trigger remote search smoothly
+   */
+  React.useEffect(() => {
+    if (!onSearch) return
+    const t = setTimeout(() => onSearch(searchValue), debounceMs)
+    return () => clearTimeout(t)
+  }, [searchValue, onSearch, debounceMs])
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -83,16 +104,17 @@ export function Combobox({
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-full p-0" align="start">
+      {/* Ajusta a largura do popover para igualar ao input/trigger */}
+      {/* Adjust popover width to match input/trigger width */}
+      <PopoverContent className="p-0 w-[--radix-popover-trigger-width]" align="start">
         <Command>
           <CommandInput 
             placeholder={searchPlaceholder}
             value={searchValue}
             onValueChange={(value) => {
-              setSearchValue(value);
-              if (onSearch) {
-                onSearch(value);
-              }
+              // Atualiza o termo local; busca remota é disparada via debounce
+              // Update local term; remote search is triggered via debounce
+              setSearchValue(value)
             }}
           />
           <CommandList>
@@ -103,24 +125,34 @@ export function Combobox({
               )).map((option) => (
                 <CommandItem
                   key={option.value}
-                  value={option.value}
+                  // Importante: value deve ser texto pesquisável
+                  // Important: value should be searchable text (label)
+                  value={option.label}
                   disabled={option.disabled}
-                  onSelect={(currentValue) => {
-                    if (currentValue === value) {
+                  className="py-3 px-3 data-[selected=true]:bg-blue-100"
+                  onSelect={() => {
+                    if (option.value === value) {
                       onValueChange("")
                     } else {
-                      onValueChange(currentValue)
+                      onValueChange(option.value)
                     }
                     setOpen(false)
                   }}
                 >
-                  <Check
-                    className={cn(
-                      "mr-2 h-4 w-4",
-                      value === option.value ? "opacity-100" : "opacity-0"
-                    )}
-                  />
-                  {option.label}
+                  <div className="flex w-full items-start gap-2">
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-medium truncate">{option.label}</div>
+                      {option.description ? (
+                        <div className="text-xs text-muted-foreground truncate">{option.description}</div>
+                      ) : null}
+                    </div>
+                    <Check
+                      className={cn(
+                        "ml-2 h-4 w-4 shrink-0 opacity-0",
+                        value === option.value ? "opacity-100" : "opacity-0"
+                      )}
+                    />
+                  </div>
                 </CommandItem>
               ))}
             </CommandGroup>
@@ -138,13 +170,19 @@ export function useComboboxOptions<T extends Record<string, any>>(
   items: T[],
   valueKey: keyof T,
   labelKey: keyof T,
-  disabledKey?: keyof T
+  disabledKey?: keyof T,
+  /**
+   * Função para construir a descrição exibida abaixo do label
+   * Function to build the description shown under the label
+   */
+  buildDescription?: (item: T) => string
 ): ComboboxOption[] {
   return React.useMemo(() => {
     return items.map((item) => ({
       value: String(item[valueKey]),
       label: String(item[labelKey]),
+      description: buildDescription ? buildDescription(item) : undefined,
       disabled: disabledKey ? Boolean(item[disabledKey]) : false,
     }))
-  }, [items, valueKey, labelKey, disabledKey])
+  }, [items, valueKey, labelKey, disabledKey, buildDescription])
 }

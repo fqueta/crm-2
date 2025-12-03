@@ -33,6 +33,7 @@ import UserCreate from "./pages/settings/UserCreate";
 import UserProfiles from "./pages/settings/UserProfiles";
 import SystemSettings from "./pages/settings/SystemSettings";
 import Stages from "./pages/settings/Stages";
+import TableInstallment from "./pages/settings/TableInstallment";
 import Login from "./pages/auth/Login";
 import Metrics from "./pages/settings/Metrics";
 import AircraftsSettings from "./pages/settings/AircraftsSettings";
@@ -66,9 +67,19 @@ import LandingPage from "./pages/LandingPage";
  */
 import AeroclubeDashboard from "./pages/AeroclubeDashboard";
 import CustomersLeads from "./pages/CustomersLeads";
+import Sales from "./pages/Sales";
+import ProposalsCreate from "./pages/ProposalsCreate";
+import ProposalsEdit from "./pages/ProposalsEdit";
+import ProposalsView from "./pages/ProposalsView";
 import Courses from "./pages/school/Courses";
 import CourseCreate from "./pages/school/CourseCreate";
 import CourseEdit from "./pages/school/CourseEdit";
+import Classes from "./pages/school/Classes";
+import ClassCreate from "./pages/school/ClassCreate";
+import ClassEdit from "./pages/school/ClassEdit";
+import Enroll from "./pages/school/Enroll";
+import EnrollmentSituationPage from "./pages/school/EnrollmentSituation";
+import Interested from "./pages/school/Interested";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -138,6 +149,12 @@ const App = () => {
                 </AuthRedirect>
               } />
               <Route path="/reset-password" element={
+                <AuthRedirect>
+                  <ResetPassword />
+                </AuthRedirect>
+              } />
+              {/* Rota alternativa: suporta token como segmento de caminho */}
+              <Route path="/reset-password/:token" element={
                 <AuthRedirect>
                   <ResetPassword />
                 </AuthRedirect>
@@ -228,6 +245,53 @@ const App = () => {
                 <AdminProtectedRoute>
                   <AppLayout>
                     <CourseEdit />
+                  </AppLayout>
+                </AdminProtectedRoute>
+              } />
+
+              {/* Escola / Turmas */}
+              <Route path="/admin/school/classes" element={
+                <AdminProtectedRoute>
+                  <AppLayout>
+                    <Classes />
+                  </AppLayout>
+                </AdminProtectedRoute>
+              } />
+              {/* Escola / Matrículas */}
+              <Route path="/admin/school/enroll" element={
+                <AdminProtectedRoute>
+                  <AppLayout>
+                    <Enroll />
+                  </AppLayout>
+                </AdminProtectedRoute>
+              } />
+              {/* Escola / Interessados */}
+              <Route path="/admin/school/interested" element={
+                <AdminProtectedRoute>
+                  <AppLayout>
+                    <Interested />
+                  </AppLayout>
+                </AdminProtectedRoute>
+              } />
+              {/* Escola / Situações de Matrícula */}
+              <Route path="/admin/school/enrollment-situation" element={
+                <AdminProtectedRoute>
+                  <AppLayout>
+                    <EnrollmentSituationPage />
+                  </AppLayout>
+                </AdminProtectedRoute>
+              } />
+              <Route path="/admin/school/classes/create" element={
+                <AdminProtectedRoute>
+                  <AppLayout>
+                    <ClassCreate />
+                  </AppLayout>
+                </AdminProtectedRoute>
+              } />
+              <Route path="/admin/school/classes/:id/edit" element={
+                <AdminProtectedRoute>
+                  <AppLayout>
+                    <ClassEdit />
                   </AppLayout>
                 </AdminProtectedRoute>
               } />
@@ -322,6 +386,47 @@ const App = () => {
                 </AdminProtectedRoute>
               } />
 
+              {/* Vendas / Funis de Vendas */}
+              <Route path="/admin/sales" element={
+                <AdminProtectedRoute>
+                  <AppLayout>
+                    <Sales />
+                  </AppLayout>
+                </AdminProtectedRoute>
+              } />
+
+              {/* Vendas / Cadastro de Propostas */}
+              <Route path="/admin/sales/proposals/create" element={
+                <AdminProtectedRoute>
+                  <AppLayout>
+                    <ProposalsCreate />
+                  </AppLayout>
+                </AdminProtectedRoute>
+              } />
+
+              {/* Vendas / Editar Proposta */}
+              <Route path="/admin/sales/proposals/edit/:id" element={
+                <AdminProtectedRoute>
+                  <AppLayout>
+                    <ProposalsEdit />
+                  </AppLayout>
+                </AdminProtectedRoute>
+              } />
+
+              {/* Vendas / Visualizar Proposta */}
+              <Route path="/admin/sales/proposals/view/:id" element={
+                <AdminProtectedRoute>
+                  <AppLayout>
+                    <ProposalsView />
+                  </AppLayout>
+                </AdminProtectedRoute>
+              } />
+
+              {/* Alias sem prefixo admin (redireciona) */}
+              <Route path="/sales/proposals/create" element={<Navigate to="/admin/sales/proposals/create" replace />} />
+              <Route path="/sales/proposals/edit/:id" element={<Navigate to="/admin/sales/proposals/edit/:id" replace />} />
+              <Route path="/sales/proposals/view/:id" element={<Navigate to="/admin/sales/proposals/view/:id" replace />} />
+
               {/* Rotas de serviços */}
               <Route path="/admin/services" element={
                 <AdminProtectedRoute>
@@ -358,6 +463,29 @@ const App = () => {
                     >
                       <Permissions />
                     </PermissionGuard>
+                  </AppLayout>
+                </AdminProtectedRoute>
+              } />
+              <Route path="/admin/settings/table-installment" element={
+                <AdminProtectedRoute>
+                  <AppLayout>
+                    {/* pt-BR/en-US: Installment tables management */}
+                    <TableInstallment />
+                  </AppLayout>
+                </AdminProtectedRoute>
+              } />
+              {/* TableInstallment dedicated pages: create and edit */}
+              <Route path="/admin/settings/table-installment/create" element={
+                <AdminProtectedRoute>
+                  <AppLayout>
+                    <TableInstallment />
+                  </AppLayout>
+                </AdminProtectedRoute>
+              } />
+              <Route path="/admin/settings/table-installment/:id/edit" element={
+                <AdminProtectedRoute>
+                  <AppLayout>
+                    <TableInstallment />
                   </AppLayout>
                 </AdminProtectedRoute>
               } />
