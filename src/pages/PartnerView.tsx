@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { formatDate } from '@/lib/utils';
 import { usePartner } from '@/hooks/partners';
 import { phoneApplyMask, phoneRemoveMask } from '@/lib/masks/phone-apply-mask';
 import { PartnerRecord } from '@/types/partners';
@@ -40,16 +41,7 @@ function formatCEP(cep: string): string {
   return cep.replace(/(\d{5})(\d{3})/, '$1-$2');
 }
 
-/**
- * Formata data para exibição
- */
-function formatDate(dateString: string): string {
-  try {
-    return new Date(dateString).toLocaleDateString('pt-BR');
-  } catch {
-    return 'Data inválida';
-  }
-}
+// Usa o utilitário global `formatDate` (dd/MM/yyyy-HH:mm:ss)
 
 /**
  * Página de visualização detalhada de um parceiro específico

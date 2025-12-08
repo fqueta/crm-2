@@ -80,6 +80,8 @@ import ClassEdit from "./pages/school/ClassEdit";
 import Enroll from "./pages/school/Enroll";
 import EnrollmentSituationPage from "./pages/school/EnrollmentSituation";
 import Interested from "./pages/school/Interested";
+import SiteComponentsList from "./pages/SiteComponentsList";
+import SiteComponentsForm from "./pages/SiteComponentsForm";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -439,6 +441,29 @@ const App = () => {
                 <AdminProtectedRoute>
                   <AppLayout>
                     <ServiceView />
+                  </AppLayout>
+                </AdminProtectedRoute>
+              } />
+
+              {/* CMS / Conteúdo do Site (Componentes) */}
+              <Route path="/admin/site/conteudo-site" element={
+                <AdminProtectedRoute>
+                  <AppLayout>
+                    <SiteComponentsList />
+                  </AppLayout>
+                </AdminProtectedRoute>
+              } />
+              <Route path="/admin/site/conteudo-site/create" element={
+                <AdminProtectedRoute>
+                  <AppLayout>
+                    <SiteComponentsForm />
+                  </AppLayout>
+                </AdminProtectedRoute>
+              } />
+              <Route path="/admin/site/conteudo-site/:id/edit" element={
+                <AdminProtectedRoute>
+                  <AppLayout>
+                    <SiteComponentsForm />
                   </AppLayout>
                 </AdminProtectedRoute>
               } />

@@ -35,6 +35,7 @@ import { SmartDocumentInput } from '@/components/lib/SmartDocumentInput';
 import { ImageUpload } from '@/components/lib/ImageUpload';
 import { useUsersList } from '@/hooks/users';
 import { useFunnelsList, useStagesList } from '@/hooks/funnels';
+import { phoneApplyMask } from '@/lib/masks/phone-apply-mask';
 /**
  * ClientFormProps
  * Props do formulário de cliente. Suporta `renderActions` para permitir que páginas
@@ -101,6 +102,22 @@ export function ClientForm({
   const selectedFunnelId = form.watch('config.funnelId');
   const { data: stagesData, isLoading: isLoadingStages } = useStagesList(selectedFunnelId || '', { per_page: 100 });
   const stages = useMemo(() => stagesData?.data ?? [], [stagesData?.data]);
+
+  /**
+   * Controle do acordeão de Atendimento
+   * pt-BR: Mantém o acordeão controlado e expande automaticamente quando há
+   *        erros de campos obrigatórios (funil/etapa), facilitando visualização.
+   * en-US: Keep the accordion controlled and auto-expand when required-field
+   *        errors (funnel/stage) are present for better visibility.
+   */
+  const [atendimentoOpen, setAtendimentoOpen] = useState<string | undefined>(undefined);
+  useEffect(() => {
+    const errors = form?.formState?.errors ?? {};
+    const cfgErrors = (errors as any)?.config ?? {};
+    if (cfgErrors?.funnelId || cfgErrors?.stage_id) {
+      setAtendimentoOpen('atendimento');
+    }
+  }, [form?.formState?.errors]);
 
   /**
     * Função para buscar CEP e preencher campos de endereço automaticamente
@@ -417,11 +434,24 @@ export function ClientForm({
         </div>
 
         {/* Seção: Sessão de Atendimento */}
-        <Accordion type="single" collapsible className="w-full space-y-4">
+        {/*
+          Indicador visual de seção (Atendimento)
+          pt-BR: A bolinha ao lado do título é neutra e não indica
+                 obrigatoriedade desta seção.
+          en-US: The dot next to the title is neutral and does not
+                 indicate this section is required.
+        */}
+        <Accordion
+          type="single"
+          collapsible
+          className="w-full space-y-4"
+          value={atendimentoOpen}
+          onValueChange={setAtendimentoOpen}
+        >
           <AccordionItem value="atendimento" className="bg-gray-50 rounded-lg border px-6">
             <AccordionTrigger className="text-lg font-semibold text-gray-900 hover:no-underline">
               <div className="flex items-center">
-                <div className="w-2 h-2 bg-sky-500 rounded-full mr-2"></div>
+                <div className="w-2 h-2 bg-gray-300 rounded-full mr-2"></div>
                 Atendimento
               </div>
             </AccordionTrigger>
@@ -433,7 +463,7 @@ export function ClientForm({
                   name="config.funnelId"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-sm font-medium text-gray-700">Funil *</FormLabel>
+                      <FormLabel className="text-sm font-medium text-gray-700">Funil</FormLabel>
                       <div className="relative">
                         <Select
                           onValueChange={(value) => {
@@ -484,7 +514,7 @@ export function ClientForm({
                   name="config.stage_id"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-sm font-medium text-gray-700">Etapa *</FormLabel>
+                      <FormLabel className="text-sm font-medium text-gray-700">Etapa</FormLabel>
                       <div className="relative">
                         <Select
                           onValueChange={field.onChange}
@@ -683,7 +713,7 @@ export function ClientForm({
                     )}
                   />
                   {form.watch('config.celular') && form.watch('config.celular').replace(/\D/g, '').length >= 10 && (
-                    <div className="absolute right-3 top-9 flex items-center">
+                    <div className="absolute right-3 top-9 flex items-center pointer-events-none">
                       <CheckCircle className="h-4 w-4 text-green-600" />
                     </div>
                   )}
@@ -712,7 +742,7 @@ export function ClientForm({
                     )}
                   />
                   {form.watch('config.telefone_residencial') && form.watch('config.telefone_residencial').replace(/\D/g, '').length >= 10 && (
-                    <div className="absolute right-3 top-9 flex items-center">
+                    <div className="absolute right-3 top-9 flex items-center pointer-events-none">
                       <CheckCircle className="h-4 w-4 text-green-600" />
                     </div>
                   )}

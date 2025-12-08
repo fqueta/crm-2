@@ -1,5 +1,5 @@
 import { useParams, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
-import { ArrowLeft, Mail, Phone, MapPin, User, Building, Calendar, GraduationCap, Briefcase, FileText, DollarSign, Edit } from 'lucide-react';
+import { ArrowLeft, Mail, Phone, MapPin, User, Building, Calendar, GraduationCap, Briefcase, FileText, DollarSign, Edit, Eye, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -9,6 +9,8 @@ import { getMockClientById } from '@/mocks/clients';
 import { ClientRecord } from '@/types/clients';
 import { useFunnel, useStagesList } from '@/hooks/funnels';
 import { phoneApplyMask } from '@/lib/masks/phone-apply-mask';
+import { useEnrollmentsList, useDeleteEnrollment } from '@/hooks/enrollments';
+import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table';
 
 
 
@@ -175,6 +177,142 @@ export default function ClientView() {
   };
 
   /**
+   * formatDateTime
+   * pt-BR: Formata data e hora para exibição em pt-BR com horas/minutos/segundos.
+   * en-US: Formats date and time for display in pt-BR with hours/minutes/seconds.
+   */
+  const formatDateTime = (dateString?: string | null) => {
+    if (!dateString) return '-';
+    try {
+      const d = new Date(dateString);
+      if (isNaN(d.getTime())) return String(dateString);
+      return d.toLocaleString('pt-BR', {
+        day: '2-digit', month: '2-digit', year: 'numeric',
+        hour: '2-digit', minute: '2-digit', second: '2-digit'
+      });
+    } catch {
+      return String(dateString);
+    }
+  };
+
+  /**
+   * formatDateTimeHyphen
+   * pt-BR: Formata entradas de data para o padrão "dd/MM/yyyy-HH:mm:ss" sempre com hífen.
+   *        Aceita strings já formatadas (com espaço ou hífen), ISO e timestamps.
+   * en-US: Formats date inputs into "dd/MM/yyyy-HH:mm:ss" always with a hyphen.
+   *        Accepts preformatted strings (space or hyphen), ISO and timestamps.
+   */
+  const formatDateTimeHyphen = (input?: string | number | Date | null): string => {
+    if (input === undefined || input === null || input === '') return '-';
+    try {
+      const s = String(input);
+      // Se já vier como dd/MM/yyyy HH:mm:ss ou dd/MM/yyyy-HH:mm:ss, normaliza para hífen
+      const m = s.match(/^(\d{2}\/\d{2}\/\d{4})(?:-|\s)(\d{2}:\d{2}:\d{2})$/);
+      if (m) return `${m[1]}-${m[2]}`;
+
+      const tryDate = new Date(s);
+      if (!isNaN(tryDate.getTime())) return formatFromDate(tryDate);
+
+      const n = Number(s);
+      if (!isNaN(n)) {
+        const d = new Date(n);
+        if (!isNaN(d.getTime())) return formatFromDate(d);
+      }
+      return s;
+    } catch {
+      return String(input);
+    }
+  };
+
+  /**
+   * formatFromDate
+   * pt-BR: Formata um objeto Date no padrão dd/MM/yyyy-HH:mm:ss.
+   * en-US: Formats a Date object into dd/MM/yyyy-HH:mm:ss.
+   */
+  const formatFromDate = (d: Date): string => {
+    const dd = String(d.getDate()).padStart(2, '0');
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const yyyy = d.getFullYear();
+    const hh = String(d.getHours()).padStart(2, '0');
+    const mi = String(d.getMinutes()).padStart(2, '0');
+    const ss = String(d.getSeconds()).padStart(2, '0');
+    return `${dd}/${mm}/${yyyy}-${hh}:${mi}:${ss}`;
+  };
+
+  /**
+   * resolveEnrollmentId
+   * pt-BR: Resolve o ID do registro de matrícula/proposta a partir de múltiplos campos possíveis.
+   * en-US: Resolves enrollment/proposal record ID from multiple possible fields.
+   */
+  const resolveEnrollmentId = (e: any): string => {
+    const v = e?.id ?? e?.ID ?? e?.codigo;
+    return v !== undefined && v !== null ? String(v) : '-';
+  };
+
+  /**
+   * resolveCreatedAt
+   * pt-BR: Resolve a coluna "Data Cad" usando preferencialmente o campo `data` da API.
+   *        Caso não exista, faz fallback para campos comuns e formata.
+   * en-US: Resolves "Data Cad" column preferring `data` field from API; falls back otherwise.
+   */
+  const resolveCreatedAt = (e: any): string => {
+    // Preferência explícita pelo campo `data` e normalização com hífen
+    const explicit = e?.data;
+    if (explicit !== undefined && explicit !== null) return formatDateTimeHyphen(explicit);
+
+    // Fallback para campos de criação/cadastro, sempre normalizando para hífen
+    const raw = e?.data_cad || e?.dataCad || e?.created_at || e?.createdAt || e?.dataCriacao;
+    return formatDateTimeHyphen(raw);
+  };
+
+  /**
+   * resolveCourseName
+   * pt-BR: Resolve o nome do curso a partir de diferentes caminhos.
+   * en-US: Resolves course name from different paths.
+   */
+  const resolveCourseName = (e: any): string => {
+    return (
+      e?.curso_nome || e?.course_name || e?.curso?.nome || e?.curso?.titulo || e?.course?.name || '-'
+    );
+  };
+
+  /**
+   * resolveClassName
+   * pt-BR: Resolve o nome da turma/turma associada.
+   * en-US: Resolves class name.
+   */
+  const resolveClassName = (e: any): string => {
+    return (
+      e?.turma_nome ?? e?.turma?.nome ?? e?.class_name ?? '-'
+    );
+  };
+
+  /**
+   * resolveConsultantName
+   * pt-BR: Resolve o nome do consultor associado à matrícula/proposta.
+   * en-US: Resolves consultant name associated with the enrollment/proposal.
+   */
+  const resolveConsultantName = (e: any): string => {
+    return (
+      e?.consultor_nome || e?.consultor?.nome || e?.consultor?.name || e?.consultor ||
+      e?.consultant_name || e?.user?.name || e?.owner_name || '-'
+    );
+  };
+
+  /**
+   * resolveStatusLabel
+   * pt-BR: Resolve o rótulo de status/situação; mapeia códigos conhecidos (ex.: 'int').
+   * en-US: Resolves status/situation label; maps known codes (e.g., 'int').
+   */
+  const resolveStatusLabel = (e: any): string => {
+    const s = e?.situacao_label || e?.situacao || e?.status || e?.config?.situacao;
+    if (!s) return '-';
+    const str = String(s);
+    if (str === 'int') return 'Interessado';
+    return str;
+  };
+
+  /**
    * Formata o CEP para exibição
    */
   const formatCEP = (cep: string) => {
@@ -205,6 +343,77 @@ export default function ClientView() {
     const cleaned = (phone || '').replace(/\D/g, '');
     const masked = phoneApplyMask(cleaned);
     return masked || 'Não informado';
+  };
+
+  /**
+   * useEnrollmentsList (client-scoped)
+   * pt-BR: Lista matrículas e propostas do cliente atual, com paginação curta para exibição no card.
+   * en-US: Lists enrollments and proposals for the current client, short pagination for card display.
+   */
+  const clientIdForEnrollment = client?.id ? String(client.id) : '';
+  const { data: enrollmentsMatResp, isLoading: isLoadingMat } = useEnrollmentsList(
+    {
+      page: 1,
+      per_page: 5,
+      // pt-BR: Envia id_cliente como string para evitar NaN quando o ID não é numérico.
+      // en-US: Send id_cliente as string to avoid NaN when ID is non-numeric.
+      id_cliente: clientIdForEnrollment || undefined,
+      situacao: 'mat',
+    },
+    { enabled: !!clientIdForEnrollment && !useMock, staleTime: 5 * 60 * 1000, refetchOnWindowFocus: false, refetchOnReconnect: false }
+  );
+  const { data: enrollmentsPropResp, isLoading: isLoadingProp } = useEnrollmentsList(
+    {
+      page: 1,
+      per_page: 5,
+      // pt-BR: Envia id_cliente como string para evitar NaN quando o ID não é numérico.
+      // en-US: Send id_cliente as string to avoid NaN when ID is non-numeric.
+      id_cliente: clientIdForEnrollment || undefined,
+      // pt-BR: Para propostas, backend espera código 'int' (interessados).
+      // en-US: For proposals, backend expects 'int' (interested) code.
+      situacao: 'int',
+    },
+    { enabled: !!clientIdForEnrollment && !useMock, staleTime: 5 * 60 * 1000, refetchOnWindowFocus: false, refetchOnReconnect: false }
+  );
+
+  /**
+   * deleteEnrollmentMutation
+   * pt-BR: Hook para excluir matrícula/proposta; usado nos botões de ação da tabela.
+   * en-US: Hook to delete enrollment/proposal; used by table action buttons.
+   */
+  const deleteEnrollmentMutation = useDeleteEnrollment();
+
+  /**
+   * getEnrollmentTitle
+   * pt-BR: Gera título amigável para itens de matrícula/proposta com fallbacks.
+   * en-US: Generates a friendly title for enrollment/proposal items with fallbacks.
+   */
+  const getEnrollmentTitle = (enroll: any) => {
+    const student = String(enroll?.student_name || enroll?.aluno_nome || enroll?.student || '').trim();
+    const course = String(enroll?.course_name || enroll?.curso_nome || enroll?.curso?.nome || '').trim();
+    const name = String(enroll?.name || enroll?.descricao || '').trim();
+    const base = student || name || `#${String(enroll?.id || '')}`;
+    return course ? `${base} • ${course}` : base;
+  };
+
+  /**
+   * goToProposalCreate
+   * pt-BR: Navega para criação de nova proposta já vinculando o cliente.
+   * en-US: Navigates to create a new proposal, pre-linking the client.
+   */
+  const goToProposalCreate = () => {
+    const q = client?.id ? `?id_cliente=${encodeURIComponent(String(client.id))}` : '';
+    navigate(`/${link_admin}/sales/proposals/create${q}`, { state: { from: location } });
+  };
+
+  /**
+   * goToProposalView
+   * pt-BR: Abre a visualização da proposta/matrícula pelo ID do registro.
+   * en-US: Opens the proposal/enrollment view by record ID.
+   */
+  const goToProposalView = (id: string | number) => {
+    const q = searchParams.get('funnel') ? `?funnel=${encodeURIComponent(String(searchParams.get('funnel') || ''))}` : '';
+    navigate(`/${link_admin}/sales/proposals/view/${encodeURIComponent(String(id))}${q}`, { state: { from: location } });
   };
 
   if (!useMock && isLoadingClient) {
@@ -518,6 +727,8 @@ export default function ClientView() {
           </CardContent>
         </Card>
 
+        {/* (removido) Matrículas e Propostas: movido para full-width acima de Informações do Sistema */}
+
         {/* Contato */}
         <Card>
           <CardHeader>
@@ -775,6 +986,160 @@ export default function ClientView() {
           </CardContent>
         </Card>
       )}
+
+      {/* Matrículas e Propostas (full-width acima de Informações do Sistema) */}
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle className="flex items-center">
+            <FileText className="mr-2 h-5 w-5" />
+            Matrículas e Propostas
+          </CardTitle>
+          <Button size="sm" onClick={goToProposalCreate}>Nova proposta</Button>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {/* Matrículas */}
+          <div>
+            <div className="text-sm font-medium text-muted-foreground mb-2">Matrículas</div>
+            {useMock ? (
+              <p className="text-sm text-muted-foreground">Modo demonstração: dados de matrículas indisponíveis.</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Id</TableHead>
+                      <TableHead>Data Cad</TableHead>
+                      <TableHead>Curso</TableHead>
+                      <TableHead>Turma</TableHead>
+                      <TableHead>Consultor</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead className="text-right">Ação</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {isLoadingMat && (
+                      <TableRow>
+                        <TableCell colSpan={7} className="text-muted-foreground">Carregando matrículas...</TableCell>
+                      </TableRow>
+                    )}
+
+                    {!isLoadingMat && ((enrollmentsMatResp?.data || enrollmentsMatResp?.items || []).length === 0) && (
+                      <TableRow>
+                        <TableCell colSpan={7} className="text-muted-foreground">Nenhuma matrícula encontrada para este cliente.</TableCell>
+                      </TableRow>
+                    )}
+
+                    {((enrollmentsMatResp?.data || enrollmentsMatResp?.items || []) as any[]).map((e) => (
+                      <TableRow key={resolveEnrollmentId(e)}>
+                        <TableCell className="font-mono text-xs">{resolveEnrollmentId(e)}</TableCell>
+                        <TableCell>{resolveCreatedAt(e)}</TableCell>
+                        <TableCell>{resolveCourseName(e)}</TableCell>
+                        <TableCell>{resolveClassName(e)}</TableCell>
+                        <TableCell>{resolveConsultantName(e)}</TableCell>
+                        <TableCell>{resolveStatusLabel(e)}</TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-2">
+                            <Button size="icon" variant="ghost" title="Ver" onClick={() => goToProposalView(e.id)}>
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                            <Button size="icon" variant="outline" title="Editar" onClick={() => navigate(`/${link_admin}/sales/proposals/edit/${encodeURIComponent(String(e.id))}`, { state: { from: location } })}>
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              size="icon"
+                              variant="destructive"
+                              title="Excluir"
+                              onClick={() => {
+                                const idStr = resolveEnrollmentId(e);
+                                if (!idStr || idStr === '-') return;
+                                const ok = window.confirm(`Confirma excluir a matrícula ID ${idStr}?`);
+                                if (ok) deleteEnrollmentMutation.mutate(idStr);
+                              }}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </div>
+
+          {/* Propostas */}
+          <div>
+            <div className="text-sm font-medium text-muted-foreground mb-2">Propostas</div>
+            {useMock ? (
+              <p className="text-sm text-muted-foreground">Modo demonstração: histórico de propostas indisponível.</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Id</TableHead>
+                      <TableHead>Data Cad</TableHead>
+                      <TableHead>Curso</TableHead>
+                      <TableHead>Turma</TableHead>
+                      <TableHead>Consultor</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead className="text-right">Ação</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {isLoadingProp && (
+                      <TableRow>
+                        <TableCell colSpan={7} className="text-muted-foreground">Carregando propostas...</TableCell>
+                      </TableRow>
+                    )}
+
+                    {!isLoadingProp && ((enrollmentsPropResp?.data || enrollmentsPropResp?.items || []).length === 0) && (
+                      <TableRow>
+                        <TableCell colSpan={7} className="text-muted-foreground">Nenhuma proposta encontrada para este cliente.</TableCell>
+                      </TableRow>
+                    )}
+
+                    {((enrollmentsPropResp?.data || enrollmentsPropResp?.items || []) as any[]).map((e) => (
+                      <TableRow key={resolveEnrollmentId(e)}>
+                        <TableCell className="font-mono text-xs">{resolveEnrollmentId(e)}</TableCell>
+                        <TableCell>{resolveCreatedAt(e)}</TableCell>
+                        <TableCell>{resolveCourseName(e)}</TableCell>
+                        <TableCell>{resolveClassName(e)}</TableCell>
+                        <TableCell>{resolveConsultantName(e)}</TableCell>
+                        <TableCell>{resolveStatusLabel(e)}</TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-2">
+                            <Button size="icon" variant="ghost" title="Ver" onClick={() => goToProposalView(e.id)}>
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                            <Button size="icon" variant="outline" title="Editar" onClick={() => navigate(`/${link_admin}/sales/proposals/edit/${encodeURIComponent(String(e.id))}`, { state: { from: location } })}>
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              size="icon"
+                              variant="destructive"
+                              title="Excluir"
+                              onClick={() => {
+                                const idStr = resolveEnrollmentId(e);
+                                if (!idStr || idStr === '-') return;
+                                const ok = window.confirm(`Confirma excluir a proposta ID ${idStr}?`);
+                                if (ok) deleteEnrollmentMutation.mutate(idStr);
+                              }}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Informações do Sistema */}
       <Card>

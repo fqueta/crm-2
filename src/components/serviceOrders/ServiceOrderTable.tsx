@@ -112,11 +112,19 @@ export default function ServiceOrderTable({
     return SERVICE_ORDER_PRIORITIES.find(p => p.value === priority) || SERVICE_ORDER_PRIORITIES[0];
   };
 
-  // Formata a data para exibição
+  // Formata a data/hora para exibição com hífen (dd/MM/yyyy-HH:mm:ss)
   const formatDate = (dateString: string | null) => {
     if (!dateString) return "-";
     try {
-      return format(new Date(dateString), "dd/MM/yyyy", { locale: ptBR });
+      const d = new Date(dateString);
+      if (isNaN(d.getTime())) return "-";
+      const dd = String(d.getDate()).padStart(2, '0');
+      const mm = String(d.getMonth() + 1).padStart(2, '0');
+      const yyyy = d.getFullYear();
+      const HH = String(d.getHours()).padStart(2, '0');
+      const MM = String(d.getMinutes()).padStart(2, '0');
+      const SS = String(d.getSeconds()).padStart(2, '0');
+      return `${dd}/${mm}/${yyyy}-${HH}:${MM}:${SS}`;
     } catch {
       return "-";
     }

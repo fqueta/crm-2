@@ -9,6 +9,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 // Removido Select: campos de Funil/Etapa/Tag serão ocultados temporariamente
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { useClientById, useClientsList } from '@/hooks/clients';
 import { useUsersList } from '@/hooks/users';
@@ -523,6 +524,17 @@ export default function ProposalsCreate() {
       toast({ title: 'Erro ao enviar proposta', description, variant: 'destructive' });
     },
   });
+
+  /**
+   * discountRows
+   * pt-BR: Linhas de parcelamento (parcela, valor, desconto) utilizadas para montar
+   *        `orc.parcelamento.linhas`. Na tela de criação ainda não há edição dessas linhas,
+   *        portanto iniciamos como lista vazia para evitar erros de referência.
+   * en-US: Installment rows (installments, value, discount) used to compose
+   *        `orc.parcelamento.linhas`. Creation screen does not edit these rows yet,
+   *        so we start with an empty list to avoid reference errors.
+   */
+  const discountRows: Array<{ parcela: string; valor: string; desconto: string }> = [];
 
   /**
    * buildPayload

@@ -101,6 +101,13 @@ const isValidCEP = (cep: string): boolean => {
 //        permanecem obrigatórios para Pessoa Jurídica.
 // en-US: CPF becomes optional for Natural Person; CNPJ and Corporate Name
 //        remain required for Legal Entity.
+/**
+ * clientSchema
+ * pt-BR: Schema Zod com mensagens em português e coerção de tipos para evitar
+ *        alertas em inglês como "Expected string, received null/number".
+ * en-US: Zod schema with Portuguese messages and type coercion to avoid
+ *        English alerts like "Expected string, received null/number".
+ */
 const clientSchema = z.object({
   tipo_pessoa: z.enum(["pf", "pj"], {
     errorMap: () => ({ message: "Selecione o tipo de pessoa" })
@@ -173,10 +180,10 @@ const clientSchema = z.object({
     observacoes: z.string().nullable().optional().refine((val) => {
       return !val || val.length <= 500;
     }, "Observações devem ter no máximo 500 caracteres"),
-    // pt-BR: Suporta envio de Funil e Etapa
-    // en-US: Keep Funnel and Stage in submission payload
-    funnelId: z.string().nullable().optional(),
-    stage_id: z.string().nullable().optional(),
+    // pt-BR: Funil e Etapa com coerção para string (evita mensagens em inglês)
+    // en-US: Funnel and Stage coerced to string (avoid English error messages)
+    funnelId: z.coerce.string().nullable().optional(),
+    stage_id: z.coerce.string().nullable().optional(),
   }),
 }).refine((data) => {
   // pt-BR: Exige CNPJ e Razão Social somente para Pessoa Jurídica.
@@ -298,7 +305,9 @@ export default function ClientEdit() {
       
       form.reset({
         tipo_pessoa: client.tipo_pessoa,
-        email: client.email,
+        // pt-BR: Normaliza valores nulos para strings vazias para mensagens em português
+        // en-US: Normalize null values to empty strings to get Portuguese messages
+        email: client.email || "",
         password: "",
         name: client.name,
         cpf: client.cpf || "",
@@ -326,8 +335,8 @@ export default function ClientEdit() {
           observacoes: client.config?.observacoes || "",
           // pt-BR: Carrega IDs de Funil e Etapa existentes no cliente
           // en-US: Load existing Funnel and Stage IDs from client
-          funnelId: client.config?.funnelId || "",
-          stage_id: client.config?.stage_id || "",
+          funnelId: String(client.config?.funnelId ?? ""),
+          stage_id: String(client.config?.stage_id ?? ""),
         },
       });
       
@@ -344,6 +353,11 @@ export default function ClientEdit() {
    * @param data Dados do formulário validados
    */
   const onSubmit = (data: ClientFormData) => {
+    /**
+     * Submissão sem obrigatoriedade de Funil/Etapa
+     * pt-BR: Funil e Etapa são opcionais e seguem como valores vazios quando não selecionados.
+     * en-US: Funnel and Stage are optional, submitted as empty values when not selected.
+     */
     
     setIsLoading(true);
     
