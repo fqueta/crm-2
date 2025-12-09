@@ -31,6 +31,25 @@ export interface ComponentRecord {
    * en-US: Optional structure with component supplementary data (e.g., id_curso).
    */
   config?: { id_curso?: string | number; [key: string]: any };
+  /**
+   * galeria
+   * pt-BR: Lista de imagens da galeria. Aceita apenas IDs (compatibilidade)
+   *        ou objetos com metadados `{ id, nome?, descricao? }`.
+   * en-US: Component gallery list. Accepts plain IDs (compat) or objects
+   *        with metadata `{ id, nome?, descricao? }`.
+   */
+  galeria?: number[] | GalleryItemPayload[];
+}
+
+/**
+ * GalleryItemPayload
+ * pt-BR: Item da galeria com metadados opcionais enviados junto ao ID.
+ * en-US: Gallery item with optional metadata sent along with the ID.
+ */
+export interface GalleryItemPayload {
+  id: number;
+  nome?: string;
+  descricao?: string;
 }
 
 /**
@@ -46,6 +65,12 @@ export interface CreateComponentInput {
   id_curso?: string;
   ativo?: 's' | 'n';
   obs?: string;
+  /**
+   * galeria
+   * pt-BR: Lista da galeria. Aceita somente IDs ou objetos com `{ id, nome?, descricao? }`.
+   * en-US: Gallery list. Accepts plain IDs or objects `{ id, nome?, descricao? }`.
+   */
+  galeria?: number[] | GalleryItemPayload[];
 }
 
 /**

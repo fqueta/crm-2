@@ -21,6 +21,19 @@ class UploadsService extends BaseApiService {
   }
 
   /**
+   * getUpload
+   * pt-BR: Busca um upload específico por ID.
+   * en-US: Fetches a specific upload by ID.
+   */
+  async getUpload(id: string | number): Promise<UploadRecord> {
+    const response = await this.get<any>(`/uploads/${id}`);
+    const normalized = (response && typeof response === 'object' && 'data' in response)
+      ? (response.data as UploadRecord)
+      : (response as UploadRecord);
+    return normalized;
+  }
+
+  /**
    * uploadFile
    * pt-BR: Envia um arquivo de imagem usando FormData (multipart). Campos extras podem ser enviados.
    * en-US: Sends an image file using FormData (multipart). Extra fields can be sent.

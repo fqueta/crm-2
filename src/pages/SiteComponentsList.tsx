@@ -203,7 +203,7 @@ export default function SiteComponentsList() {
                 <TableCell className="font-mono">{item.id}</TableCell>
                 <TableCell>{item.nome ?? '-'}</TableCell>
                 <TableCell>{item.short_code ?? '-'}</TableCell>
-                <TableCell>{item.tipo_conteudo ?? '-'}</TableCell>
+                <TableCell>{item.tipo_conteudo_nome ?? '-'}</TableCell>
                 {/*
                   Curso — exibe o nome do curso quando disponível
                   pt-BR: Prioriza `curso_nome` retornado pela API; fallback para `id_curso` ou `config.id_curso`.

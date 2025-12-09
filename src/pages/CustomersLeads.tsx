@@ -88,15 +88,37 @@ const getEnrollmentAmountBRL = (enroll: EnrollmentRecord): number => {
   /**
    * normalizeToNumber
    * pt-BR: Converte valores numéricos possivelmente em string (ex.: "17.820,00") para número.
+   *        Aceita strings com máscara de moeda (ex.: "R$ 17.820,00"), removendo
+   *        símbolos e separadores de milhar antes de normalizar o decimal.
    * en-US: Converts possibly string numbers (e.g., "17.820,00") into a numeric value.
+   *        Accepts currency-masked strings (e.g., "R$ 17.820,00"), stripping
+   *        symbols and thousand separators before normalizing the decimal.
    */
   const normalizeToNumber = (v: any): number | undefined => {
     if (v === undefined || v === null) return undefined;
     if (typeof v === 'number' && !Number.isNaN(v)) return v;
     if (typeof v === 'string') {
-      const s = v.replace(/\./g, '').replace(',', '.');
+      // Remove tudo que não seja dígitos, vírgula, ponto ou sinal
+      const cleanedSymbols = v.trim().replace(/[^\d.,-]/g, '');
+      // Regras de normalização:
+      // - Se tiver vírgula e ponto: assume padrão pt-BR (ponto = milhar, vírgula = decimal)
+      // - Se tiver apenas vírgula: converte vírgula para ponto
+      // - Se tiver apenas ponto: mantém como decimal
+      // - Caso vazio após limpeza, tenta converter a string original como número puro
+      let s = cleanedSymbols;
+      if (s.includes(',') && s.includes('.')) {
+        s = s.replace(/\./g, '').replace(',', '.');
+      } else if (s.includes(',')) {
+        s = s.replace(',', '.');
+      }
       const n = parseFloat(s);
       if (!Number.isNaN(n)) return n;
+      // Fallback: tenta converter dígitos puros quando a string não contém separadores
+      const onlyDigits = v.replace(/\D/g, '');
+      if (onlyDigits.length > 0) {
+        const nd = parseFloat(onlyDigits);
+        if (!Number.isNaN(nd)) return nd;
+      }
     }
     return undefined;
   };
